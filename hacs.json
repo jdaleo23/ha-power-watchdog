@@ -1,5 +1,6 @@
 {
   "name": "Hughes Power Watchdog - Smart Surge Protector",
   "render_readme": true,
-  "filename": "power_watchdog.zip" 
+  "zip_release": true,
+  "filename": "hughes_power_watchdog.zip" 
 }
