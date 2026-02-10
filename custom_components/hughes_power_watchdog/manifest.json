@@ -1,6 +1,6 @@
 {
   "domain": "hughes_power_watchdog",
-  "name": "Hughes Power Watchdog Smart Surge Protector",
+  "name": "Hughes Power Watchdog - Smart Surge Protector",
   "codeowners": ["@jdaleo23"],
   "config_flow": true,
   "dependencies": ["bluetooth"],
