@@ -23,7 +23,7 @@ jobs:
       - name: Zip the Integration
         run: |
           cd custom_components
-          zip -r ../power_watchdog.zip hughes_power_watchdog
+          zip -r ../hughes_power_watchdog.zip hughes_power_watchdog
 
       - name: Upload Zip to Release
         uses: svenstaro/upload-release-action@v2
