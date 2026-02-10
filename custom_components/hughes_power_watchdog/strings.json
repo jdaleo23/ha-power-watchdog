@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to Power Watchdog",
-        "description": "Enter the Bluetooth address of your device. If you don't know it, check the 'discovered' list.",
+        "title": "Add Hughes Power Watchdog",
+        "description": "Select your Power Watchdog from the list below. If it doesn't appear, ensure it is plugged in and not connected to your phone app.",
         "data": {
-          "address": "Bluetooth Address",
-          "device_name": "Device Name"
+          "address": "Select Device",
+          "device_name": "Integration Name"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect",
-      "unknown": "Unexpected error"
+      "no_devices_found": "No Power Watchdog devices found nearby.",
+      "cannot_connect": "Failed to connect. Check range and phone app connection.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured."
     }
   }
 }
