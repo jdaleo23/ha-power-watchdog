@@ -3,8 +3,11 @@ import logging
 import struct
 
 from bleak import BleakError
+# NEW: Import the modern connection helpers
+from bleak_retry_connector import establish_connection, BleakClientWithServiceCache
+
 from homeassistant.components.bluetooth import (
-    async_bleak_client_create,
+    async_ble_device_from_address,
     async_register_callback,
     BluetoothChange,
     BluetoothServiceInfoBleak,
@@ -36,7 +39,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Power Watchdog sensors."""
+    """Set up the Hughes Power Watchdog sensors."""
     address = entry.data[CONF_ADDRESS]
     name = entry.data[CONF_DEVICE_NAME]
 
@@ -75,24 +78,36 @@ class PowerWatchdogManager:
         """Main loop to maintain connection."""
         while True:
             try:
+                # 1. Find the Bluetooth device object from HA's cache
+                ble_device = async_ble_device_from_address(self.hass, self.address, connectable=True)
+                
+                if not ble_device:
+                    _LOGGER.debug("Device %s not found in Bluetooth cache, waiting...", self.address)
+                    await asyncio.sleep(10)
+                    continue
+
                 _LOGGER.debug("Connecting to Power Watchdog %s", self.address)
-                # Use HA's helper to create a client that works with proxies
-                self.client = await async_bleak_client_create(
-                    self.hass, self.address, disconnected_callback=self._on_disconnected
+                
+                # 2. Establish connection using the modern retry connector
+                self.client = await establish_connection(
+                    BleakClientWithServiceCache,
+                    ble_device,
+                    self.address,
+                    disconnected_callback=self._on_disconnected,
                 )
 
-                if not self.client.is_connected:
-                    await self.client.connect()
+                if self.client.is_connected:
+                    _LOGGER.debug("Connected. Subscribing...")
+                    await self.client.start_notify(SERVICE_UUID, self._notification_handler)
 
-                _LOGGER.debug("Connected. Subscribing...")
-                await self.client.start_notify(SERVICE_UUID, self._notification_handler)
-
-                _LOGGER.debug("Sending Handshake...")
-                await self.client.write_gatt_char(SERVICE_UUID, HANDSHAKE_PAYLOAD, response=True)
-                
-                # Keep connection alive
-                while self.client and self.client.is_connected:
-                    await asyncio.sleep(5)
+                    _LOGGER.debug("Sending Handshake...")
+                    await self.client.write_gatt_char(SERVICE_UUID, HANDSHAKE_PAYLOAD, response=True)
+                    
+                    # Keep connection alive
+                    while self.client and self.client.is_connected:
+                        await asyncio.sleep(5)
+                else:
+                    _LOGGER.warning("Failed to connect.")
 
             except (BleakError, asyncio.TimeoutError) as ex:
                 _LOGGER.warning("Connection failed: %s. Retrying in 10s...", ex)
@@ -106,14 +121,18 @@ class PowerWatchdogManager:
 
     @callback
     def _notification_handler(self, sender, data):
-        """Parse the raw bytes (Logic from our Python script)."""
+        """Parse the raw bytes."""
         if len(data) <= 30:
             return
 
         try:
             # Unpack Big Endian
             volts_raw, amps_raw, watts_raw, energy_raw = struct.unpack('>IIII', data[9:25])
-            freq_raw = struct.unpack('>I', data[37:41])[0]
+            # Check length before unpacking frequency to avoid index errors
+            if len(data) >= 41:
+                freq_raw = struct.unpack('>I', data[37:41])[0]
+            else:
+                freq_raw = 0
 
             self.data["volts"] = volts_raw / 10000.0
             self.data["amps"] = amps_raw / 10000.0
