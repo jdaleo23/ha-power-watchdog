@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Update manifest.json version
+        shell: bash
+        run: |
+          # Grabs the tag (e.g. v1.0.2) and removes the 'v' (1.0.2)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          # Updates the JSON file using jq
+          jq --arg ver "$VERSION" '.version = $ver' custom_components/hughes_power_watchdog/manifest.json > tmp.json && mv tmp.json custom_components/hughes_power_watchdog/manifest.json
+          
+      - name: Zip the Integration
+        run: |
+          cd custom_components
+          zip -r ../power_watchdog.zip hughes_power_watchdog
+
+      - name: Upload Zip to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: hughes_power_watchdog.zip
+          asset_name: hughes_power_watchdog.zip
+          tag: ${{ github.ref }}
+          overwrite: true
