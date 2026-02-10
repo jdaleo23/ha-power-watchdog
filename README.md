@@ -1,4 +1,50 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog.svg)](https://GitHub.com/jdaleo23/ha-power-watchdog/releases/)
 
-# Hughes Power Watchdog V6 Integration
+# Hughes Power Watchdog - Smart Surge Protector
+
+A custom Home Assistant integration for the **Hughes Power Watchdog Gen 2 (WD_V6)** smart surge protectors. This integration uses Bluetooth Low Energy (BLE) to provide real-time monitoring of your RV's power status directly in Home Assistant.
+
+## 🚀 Features
+* **Auto-Discovery:** Automatically finds nearby Power Watchdog devices via Home Assistant's Bluetooth integration.
+* **Real-time Monitoring:** Local polling for fast updates without relying on the cloud.
+* **Key Sensors:**
+  * ⚡ **Voltage (V)**
+  * 🔌 **Current (A)**
+  * 🔋 **Power (W)**
+  * 📈 **Energy Consumption (kWh)**
+  * 〰️ **Frequency (Hz)**
+
+## 🛠️ Requirements
+* **Hardware:** Hughes Power Watchdog Gen 2 (Bluetooth version WD_V6).
+* **Bluetooth:** A working Bluetooth adapter or proxy on your Home Assistant host.
+* **Mobile App:** Ensure the Power Watchdog mobile app is **closed** when trying to connect, as the device only supports one active Bluetooth connection at a time.
+
+## 📦 Installation
+
+### Option 1: HACS (Recommended)
+1. Open **HACS** in Home Assistant.
+2. Click the three dots in the top right corner and select **Custom repositories**.
+3. Paste the URL of this repository: `https://github.com/jdaleo23/ha-power-watchdog`
+4. Select **Integration** as the category and click **Add**.
+5. Find "Hughes Power Watchdog" and click **Download**.
+6. **Restart Home Assistant.**
+
+### Option 2: Manual
+1. Download the latest `hughes_power_watchdog.zip` from the [Releases](https://github.com/jdaleo23/ha-power-watchdog/releases) page.
+2. Extract the contents into your `config/custom_components/hughes_power_watchdog` folder.
+3. **Restart Home Assistant.**
+
+## ⚙️ Configuration
+1. Navigate to **Settings > Devices & Services**.
+2. Click **+ Add Integration**.
+3. Search for **Hughes Power Watchdog**.
+4. Select your device from the discovered list.
+5. Provide a friendly name (e.g., "RV Power Watchdog").
+
+## ⚠️ Known Issues / Troubleshooting
+* **"No Devices Found":** Ensure your Power Watchdog is powered on and that the official phone app is completely closed.
+* **Connection Stability:** Bluetooth range can be limited; if you experience dropouts, consider using an [ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy.html) closer to your RV.
+
+---
+*Disclaimer: This is a community-driven integration and is not an official product of Hughes Autoformers.*
