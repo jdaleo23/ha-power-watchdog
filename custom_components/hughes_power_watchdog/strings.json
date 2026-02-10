@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Power Watchdog",
+        "description": "Enter the Bluetooth address of your device. If you don't know it, check the 'discovered' list.",
+        "data": {
+          "address": "Bluetooth Address",
+          "device_name": "Device Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  }
+}
