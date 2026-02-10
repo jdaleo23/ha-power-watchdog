@@ -1,4 +1,4 @@
-{
+.{
   "domain": "hughes_power_watchdog",
   "name": "Hughes Power Watchdog - Smart Surge Protector",
   "codeowners": ["@jdaleo23"],
@@ -7,8 +7,8 @@
   "documentation": "https://github.com/jdaleo23/ha-power-watchdog",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jdaleo23/ha-power-watchdog/issues",
-  "version": "0.1.0",
-  "requirements": [],
+  "version": "0.0.0",
+  "requirements": ["bleak-retry-connector>=2.0.0"],
   "bluetooth": [
     {
       "name": "WD_V6*"
