@@ -50,7 +50,7 @@ class PowerWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=self.add_suggested_values_to_schema(
                 {
                     config_entries.vol.Required(CONF_ADDRESS): config_entries.vol.In(discovered_devices),
-                    config_entries.vol.Required(CONF_DEVICE_NAME, default="Power Watchdog"): str,
+                    config_entries.vol.Required(CONF_DEVICE_NAME, default="Hughes Power Watchdog"): str,
                 },
                 user_input,
             ),
@@ -67,4 +67,5 @@ class PowerWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_user({
              CONF_ADDRESS: discovery_info.address, 
              CONF_DEVICE_NAME: name
+
         })
