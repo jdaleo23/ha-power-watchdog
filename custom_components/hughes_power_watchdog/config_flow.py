@@ -1,4 +1,5 @@
 import logging
+import voluptuous as vol
 from typing import Any
 
 from homeassistant import config_entries
@@ -45,6 +46,20 @@ class PowerWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not discovered_devices:
             return self.async_abort(reason="no_devices_found")
 
+        data_schema = vol.Schema({
+            vol.Required(CONF_ADDRESS): vol.In(discovered_devices),
+            vol.Required(CONF_DEVICE_NAME, default="Hughes Power Watchdog"): str,
+        })
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                data_schema, 
+                user_input
+            ),
+            errors=errors,
+        )
+
         return self.async_show_form(
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(
@@ -69,3 +84,4 @@ class PowerWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
              CONF_DEVICE_NAME: name
 
         })
+
