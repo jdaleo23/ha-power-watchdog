@@ -51,7 +51,7 @@ async def async_setup_entry(
         PowerWatchdogSensor(manager, "Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, "volts"),
         PowerWatchdogSensor(manager, "Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, "amps"),
         PowerWatchdogSensor(manager, "Power", SensorDeviceClass.POWER, UnitOfPower.WATT, "watts"),
-        PowerWatchdogSensor(manager, "Energy", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "energy"),
+        PowerWatchdogSensor(manager, "Total Energy", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "energy"),
         PowerWatchdogSensor(manager, "Frequency", SensorDeviceClass.FREQUENCY, UnitOfFrequency.HERTZ, "freq"),
     ]
 
@@ -165,7 +165,7 @@ class PowerWatchdogSensor(SensorEntity):
             identifiers={(DOMAIN, manager.address)},
             name=manager.name,
             manufacturer="Hughes Autoformers",
-            model="Power Watchdog V2",
+            model="Power Watchdog Gen 2",
         )
         manager.register_sensor(self)
 
@@ -173,3 +173,4 @@ class PowerWatchdogSensor(SensorEntity):
     def native_value(self):
         """Return the state of the sensor."""
         return self._manager.data.get(self._key)
+
