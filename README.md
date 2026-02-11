@@ -1,22 +1,14 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog.svg)](https://GitHub.com/jdaleo23/ha-power-watchdog/releases/)
-![Compatibility: 30A Only](https://img.shields.io/badge/Compatibility-30A_Only-blue?style=flat-square&logo=appveyor)
-[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
+[![Release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog?style=for-the-badge)](https://github.com/jdaleo23/ha-power-watchdog/releases)
+[![HACS Badge](https://img.shields.io/badge/HACS-default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+![Compatibility](https://img.shields.io/badge/compatibility-30A%20only-blue?style=for-the-badge)
 
-# Hughes Power Watchdog - Smart Surge Protector
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=for-the-badge)](https://paypal.me/jordandaleo)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_☕-F16061?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=grey)](https://ko-fi.com/jdaleo23)
 
-A custom Home Assistant integration for the **Hughes Power Watchdog Gen 2 (WD_V6)** smart surge protectors. This integration uses Bluetooth Low Energy (BLE) to provide real-time monitoring of your RV's power status directly in Home Assistant.
+# Hughes Power Watchdog - Smart Surge Protector <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/PWD logo.png">
 
-## 🚀 Features
-* **Auto-Discovery:** Automatically finds nearby Power Watchdog devices via Home Assistant's Bluetooth integration.
-* **Real-time Monitoring:** Local polling for fast updates without relying on the cloud.
-* **Key Sensors:**
-  * ⚡ **Voltage (V)**
-  * 🔌 **Current (A)**
-  * 🔋 **Power (W)**
-  * 📈 **Energy Consumption (kWh)**
-  * 〰️ **Frequency (Hz)**
- 
+A custom Home Assistant integration for the [**Hughes Power Watchdog Gen 2 (WD_V6)**](https://www.powerwatchdog.com/surge-protectors) smart surge protectors. This integration uses Bluetooth Low Energy (BLE) to provide real-time monitoring of your RV's power status directly in Home Assistant.
+
 ## 🔌 Compatibility & Hardware
 This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models.
 
@@ -26,9 +18,14 @@ This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models
 > [!IMPORTANT]
 > Because 50A models monitor two separate power "legs" (L1 and L2), the data structure is different. If you have a 50A model and are comfortable sharing a Bluetooth packet dump, please open a **Discussion** so we can add support!
 
+## 🚀 Features
+* **Auto-Discovery:** Automatically finds nearby Power Watchdog devices via Home Assistant's Bluetooth integration.
+* **Local Monitoring:** For fast updates without relying on the cloud.
+* **Key Sensors:** ⚡ **Voltage (V)** || 🔌 **Current (A)** || 🔋 **Power (W)** || 📈 **Energy Consumption (kWh)** || 〰️ **Frequency (Hz)**
+
 ## 🛠️ Requirements
 * **Hardware:** Hughes Power Watchdog Gen 2 (Bluetooth version WD_V6).
-* **Bluetooth:** A working Bluetooth adapter or proxy on your Home Assistant host.
+* **Bluetooth:** Bluetooth adapter or proxy on your Home Assistant host.
 * **Mobile App:** Ensure the Power Watchdog mobile app is **closed** when trying to connect, as the device only supports one active Bluetooth connection at a time.
 
 ## 📦 Installation
@@ -51,7 +48,6 @@ This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models
 2. Click **+ Add Integration**.
 3. Search for **Hughes Power Watchdog**.
 4. Select your device from the discovered list.
-5. Provide a friendly name (e.g., "RV Power Watchdog").
 
 ## ⚠️ Known Issues / Troubleshooting
 * **"No Devices Found":** Ensure your Power Watchdog is powered on and that the official phone app is completely closed.
@@ -69,9 +65,6 @@ Here is a sample layout for your 30A connection showing the 80% safety limits an
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300">
 
 ## ❤️ Support the Project
-If this integration helps you keep your RV power safe, feel free to support its development:
-
-[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
-
-----
-*Disclaimer: This is a community-driven integration and is not an official product of Hughes Autoformers.*
+This is my first integration. I appreciate your support in its development, if you find it useful to help keep your RV safe.
+* [Donate with PayPal](https://paypal.me/jordandaleo)
+* [Buy Me A Coffee](https://ko-fi.com/jdaleo23)
