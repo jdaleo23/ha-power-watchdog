@@ -152,15 +152,21 @@ class PowerWatchdogSensor(SensorEntity):
     """Representation of a Power Watchdog Sensor."""
 
     _attr_should_poll = False
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, manager, name_suffix, device_class, unit, data_key):
+        """Initialize the sensor."""
         self._manager = manager
         self._key = data_key
         self._attr_name = f"{manager.name} {name_suffix}"
         self._attr_unique_id = f"{manager.address}_{data_key}"
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
+
+        if device_class == SensorDeviceClass.ENERGY:
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        else:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, manager.address)},
             name=manager.name,
@@ -173,4 +179,3 @@ class PowerWatchdogSensor(SensorEntity):
     def native_value(self):
         """Return the state of the sensor."""
         return self._manager.data.get(self._key)
-
