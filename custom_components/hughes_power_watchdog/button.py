@@ -1,5 +1,5 @@
 from homeassistant.components.button import ButtonEntity
-from .const import DOMAIN, CMD_RESET_ENERGY, CONF_CHAR_UUID
+from .const import DOMAIN, CMD_RESET_ENERGY, CHARACTERISTIC_UUID
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Power Watchdog button."""
@@ -21,7 +21,7 @@ class WatchdogResetButton(ButtonEntity):
         if self._manager.client and self._manager.client.is_connected:
             payload = bytes.fromhex(CMD_RESET_ENERGY)
             await self._manager.client.write_gatt_char(
-                CONF_CHAR_UUID, 
+                CHARACTERISTIC_UUID, 
                 payload, 
                 response=True
             )
