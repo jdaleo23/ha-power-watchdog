@@ -70,8 +70,8 @@ If this integration helps you keep your RV power safe, feel free to support its 
 ## 📊 Dashboard Setup
 Here is a sample layout for your 30A connection showing the 80% safety limits:
 
-<img src="images/safety_gauges.png" width="300">
-<img src="images/sensors.png" width="300">
+<img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/safety_gauges.png" width="300">
+<img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300">
 
 ----
 *Disclaimer: This is a community-driven integration and is not an official product of Hughes Autoformers.*
