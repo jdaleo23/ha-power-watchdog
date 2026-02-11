@@ -46,5 +46,5 @@ A custom Home Assistant integration for the **Hughes Power Watchdog Gen 2 (WD_V6
 * **"No Devices Found":** Ensure your Power Watchdog is powered on and that the official phone app is completely closed.
 * **Connection Stability:** Bluetooth range can be limited; if you experience dropouts, consider using an [ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy.html) closer to your RV.
 
----
+----
 *Disclaimer: This is a community-driven integration and is not an official product of Hughes Autoformers.*
