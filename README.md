@@ -21,7 +21,14 @@ This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models
 ## 🚀 Features
 * **Auto-Discovery:** Automatically finds nearby Power Watchdog devices via Home Assistant's Bluetooth integration.
 * **Local Monitoring:** For fast updates without relying on the cloud.
-* **Key Sensors:** ⚡ **Voltage (V)** || 🔌 **Current (A)** || 🔋 **Power (W)** || 📈 **Energy Consumption (kWh)** || 〰️ **Frequency (Hz)**
+* **Key Sensors:**
+  * ⚡ **Voltage (V)**
+  * 🔌 **Current (A)**
+  * 🔋 **Power (W)**
+  * 📈 **Energy Consumption (kWh)**
+  * 〰️ **Frequency (Hz)**
+* **Controls:**
+  * 🔄 **Reset Total Energy Button:** Reset your accumulated kWh counter directly from Home Assistant.
 
 ## 🛠️ Requirements
 * **Hardware:** Hughes Power Watchdog Gen 2 (Bluetooth version WD_V6).
