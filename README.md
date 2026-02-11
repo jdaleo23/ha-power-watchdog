@@ -63,7 +63,7 @@ This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models
 * **Feature Requests:** Have an idea for a new sensor or feature? Let's talk about it in the Discussions tab!
 
 ## 📊 Dashboard Setup
-Here is a sample layout for your 30A connection showing the 80% safety limits:
+Here is a sample layout for your 30A connection showing the 80% safety limits and available sensors:
 
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/safety_gauges.png" width="300">
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300">
