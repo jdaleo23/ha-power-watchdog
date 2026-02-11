@@ -2,11 +2,12 @@ import asyncio
 import logging
 import struct
 
-from homeassistant.components.bluetooth import (
-    async_bleak_client_create,
-)
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.components.bluetooth import (
+    async_ble_device_from_address,
+)
 from bleak import BleakError
+from bleak_retry_connector import establish_connection, BleakClientWithServiceCache
 
 from .const import CHARACTERISTIC_UUID, HANDSHAKE_PAYLOAD
 
@@ -31,12 +32,23 @@ class PowerWatchdogManager:
         while True:
             try:
                 _LOGGER.debug("Connecting to Power Watchdog %s", self.address)
-                self.client = await async_bleak_client_create(
-                    self.hass, self.address, disconnected_callback=self._on_disconnected
-                )
+                
+                # Fetch the BLEDevice from the address
+                device = async_ble_device_from_address(self.hass, self.address, connectable=True)
 
-                if not self.client.is_connected:
-                    await self.client.connect()
+                if not device:
+                    _LOGGER.debug("Device not found. Waiting...")
+                    await asyncio.sleep(10)
+                    continue
+
+                _LOGGER.debug("Connecting...")
+                # Use establish_connection for robust retry-aware connections
+                self.client = await establish_connection(
+                    BleakClientWithServiceCache,
+                    device,
+                    name=self.name,
+                    disconnected_callback=self._on_disconnected,
+                )
 
                 _LOGGER.debug("Connected. Subscribing...")
                 await self.client.start_notify(CHARACTERISTIC_UUID, self._notification_handler)

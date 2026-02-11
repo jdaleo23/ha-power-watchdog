@@ -33,7 +33,7 @@ async def async_setup_entry(
         PowerWatchdogSensor(manager, "Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, "volts"),
         PowerWatchdogSensor(manager, "Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, "amps"),
         PowerWatchdogSensor(manager, "Power", SensorDeviceClass.POWER, UnitOfPower.WATT, "watts"),
-        PowerWatchdogSensor(manager, "Energy", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "energy"),
+        PowerWatchdogSensor(manager, "Total Energy", SensorDeviceClass.ENERGY, UnitOfEnergy.KILO_WATT_HOUR, "energy"),
         PowerWatchdogSensor(manager, "Frequency", SensorDeviceClass.FREQUENCY, UnitOfFrequency.HERTZ, "freq"),
     ]
 
