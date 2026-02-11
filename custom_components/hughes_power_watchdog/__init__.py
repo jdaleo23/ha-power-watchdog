@@ -14,6 +14,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     manager = PowerWatchdogManager(hass, address, name)
     
+    # Create the background task for the connection loop
     task = entry.async_create_background_task(hass, manager.connect_loop(), "power_watchdog_loop")
 
     hass.data.setdefault(DOMAIN, {})
@@ -31,9 +32,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     if unload_ok:
         data = hass.data[DOMAIN].pop(entry.entry_id)
-        task = data["task"]
+        task = data.get("task")
         
-        task.cancel()
-        await asyncio.gather(task, return_exceptions=True)
+        if task:
+            task.cancel()
+            # Wait for the task to finish cancelling to release BLE resources
+            await asyncio.gather(task, return_exceptions=True)
 
     return unload_ok
