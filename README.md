@@ -1,9 +1,9 @@
 [![Release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog?style=for-the-badge)](https://github.com/jdaleo23/ha-power-watchdog/releases)
-[![HACS Badge](https://img.shields.io/badge/HACS-default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![HACS Badge](https://img.shields.io/badge/HACS-default-blue.svg?style=for-the-badge)](https://github.com/hacs/integration)
 ![Compatibility](https://img.shields.io/badge/compatibility-30A%20only-blue?style=for-the-badge)
 
-[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=for-the-badge)](https://paypal.me/jordandaleo)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_☕-F16061?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=grey)](https://ko-fi.com/jdaleo23)
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-red.svg?style=for-the-badge)](https://paypal.me/jordandaleo)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_☕-red?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=grey)](https://ko-fi.com/jdaleo23)
 
 # Hughes Power Watchdog - Smart Surge Protector <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/PWD logo.png">
 
