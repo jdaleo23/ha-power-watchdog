@@ -1,7 +1,6 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog.svg)](https://GitHub.com/jdaleo23/ha-power-watchdog/releases/)
 ![Compatibility: 30A Only](https://img.shields.io/badge/Compatibility-30A_Only-blue?style=flat-square&logo=appveyor)
-
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
 
 # Hughes Power Watchdog - Smart Surge Protector
