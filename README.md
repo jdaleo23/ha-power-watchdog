@@ -62,16 +62,16 @@ This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models
 * **Have a question?** Join the [Discussions](https://github.com/jdaleo23/ha-power-watchdog/discussions) to ask questions or share your dashboard setup.
 * **Feature Requests:** Have an idea for a new sensor or feature? Let's talk about it in the Discussions tab!
 
-## ❤️ Support the Project
-If this integration helps you keep your RV power safe, feel free to support its development:
-
-[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
-
 ## 📊 Dashboard Setup
 Here is a sample layout for your 30A connection showing the 80% safety limits:
 
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/safety_gauges.png" width="300">
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300">
+
+## ❤️ Support the Project
+If this integration helps you keep your RV power safe, feel free to support its development:
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
 
 ----
 *Disclaimer: This is a community-driven integration and is not an official product of Hughes Autoformers.*
