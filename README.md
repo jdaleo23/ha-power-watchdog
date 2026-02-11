@@ -1,5 +1,8 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog.svg)](https://GitHub.com/jdaleo23/ha-power-watchdog/releases/)
+![Compatibility: 30A Only](https://img.shields.io/badge/Compatibility-30A_Only-blue?style=flat-square&logo=appveyor)
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
 
 # Hughes Power Watchdog - Smart Surge Protector
 
@@ -14,6 +17,15 @@ A custom Home Assistant integration for the **Hughes Power Watchdog Gen 2 (WD_V6
   * 🔋 **Power (W)**
   * 📈 **Energy Consumption (kWh)**
   * 〰️ **Frequency (Hz)**
+ 
+## 🔌 Compatibility & Hardware
+This integration is designed specifically for **Gen 2 (WD_V6)** Bluetooth models.
+
+* **Tested:** 30 Amp Smart Surge Protector (WD_V6).
+* **Not Currently Supported:** 50 Amp models. 
+
+> [!IMPORTANT]
+> Because 50A models monitor two separate power "legs" (L1 and L2), the data structure is different. If you have a 50A model and are comfortable sharing a Bluetooth packet dump, please open a **Discussion** so we can add support!
 
 ## 🛠️ Requirements
 * **Hardware:** Hughes Power Watchdog Gen 2 (Bluetooth version WD_V6).
@@ -45,6 +57,22 @@ A custom Home Assistant integration for the **Hughes Power Watchdog Gen 2 (WD_V6
 ## ⚠️ Known Issues / Troubleshooting
 * **"No Devices Found":** Ensure your Power Watchdog is powered on and that the official phone app is completely closed.
 * **Connection Stability:** Bluetooth range can be limited; if you experience dropouts, consider using an [ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy.html) closer to your RV.
+
+## 💬 Support & Community
+* **Found a bug?** Please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) and include your logs.
+* **Have a question?** Join the [Discussions](https://github.com/jdaleo23/ha-power-watchdog/discussions) to ask questions or share your dashboard setup.
+* **Feature Requests:** Have an idea for a new sensor or feature? Let's talk about it in the Discussions tab!
+
+## ❤️ Support the Project
+If this integration helps you keep your RV power safe, feel free to support its development:
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/jordandaleo)
+
+## 📊 Dashboard Setup
+Here is a sample layout for your 30A connection showing the 80% safety limits:
+
+<img src="images/safety_gauges.png" width="300">
+<img src="images/sensors.png" width="300">
 
 ----
 *Disclaimer: This is a community-driven integration and is not an official product of Hughes Autoformers.*
