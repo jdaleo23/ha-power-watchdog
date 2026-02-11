@@ -1,4 +1,5 @@
 from homeassistant.components.button import ButtonEntity
+from homeassistant.helpers.entity import DeviceInfo
 from .const import DOMAIN, CMD_RESET_ENERGY, CHARACTERISTIC_UUID
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -15,6 +16,13 @@ class WatchdogResetButton(ButtonEntity):
         self._attr_unique_id = f"{manager.address}_reset_energy"
         self._attr_icon = "mdi:counter"
         self._attr_device_class = "restart"
+        
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, manager.address)},
+            name=manager.name,
+            manufacturer="Hughes Autoformers",
+            model="Power Watchdog Gen 2",
+        )
 
     async def async_press(self) -> None:
         """Handle the button press to reset energy."""
