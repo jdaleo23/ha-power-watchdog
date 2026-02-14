@@ -37,4 +37,11 @@ CMD_RESET_ENERGY = "2479774001060300007121"
 CONF_DEVICE_NAME = "device_name"
 
 # ── BLE advertisement prefixes used during discovery ────────────────────────
-DEVICE_NAME_PREFIXES = ("WD_V6", "WD_E7", "WD_E8")
+# Gen2 (WiFi+BT) devices advertise as "WD_{type}_{serialhex}"
+#   Types: E5, E6, E7, E8, E9, V5, V6, V7, V8, V9
+#   Suffix digit determines line count: 5/6 = 30A single, 7/8/9 = 50A dual
+# Gen1 (BT-only) devices advertise as "PM{S|D}..." (19 chars)
+#   PMS = 30A single, PMD = 50A dual
+GEN2_PREFIX = "WD_"
+GEN1_PREFIX = "PM"
+DEVICE_NAME_PREFIXES = (GEN2_PREFIX, GEN1_PREFIX)

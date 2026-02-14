@@ -14,13 +14,13 @@
       "service_uuid": "0000ff01-0000-1000-8000-00805f9b34fb"
     },
     {
-      "local_name": "WD_V6*"
+      "local_name": "WD_*"
     },
     {
-      "local_name": "WD_E7*"
+      "local_name": "PMS*"
     },
     {
-      "local_name": "WD_E8*"
+      "local_name": "PMD*"
     }
   ]
 }

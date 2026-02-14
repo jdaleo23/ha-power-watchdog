@@ -11,13 +11,27 @@ A custom Home Assistant integration for the [**Hughes Power Watchdog**](https://
 
 ## Compatibility & Hardware
 
-This integration supports the Gen 2 Bluetooth protocol used by current Power Watchdog models.
+This integration supports both Gen 1 (Bluetooth-only) and Gen 2 (WiFi + Bluetooth) Power Watchdog models.
 
-| Model | BLE Prefix | Status |
-|-------|-----------|--------|
-| 30A Smart Surge Protector | `WD_V6` | Supported |
-| 50A Smart Surge Protector | `WD_E7` | Supported |
-| E8 models | `WD_E8` | Discovered (untested) |
+### Gen 2 (WiFi + Bluetooth)
+
+Gen 2 devices advertise as `WD_{type}_{serial}`. The type suffix digit determines the line count:
+
+| Suffix digit | Line type | Examples |
+|-------------|-----------|----------|
+| 5, 6 | 30A single-line | `WD_V5`, `WD_V6`, `WD_E5`, `WD_E6` |
+| 7, 8, 9 | 50A dual-line | `WD_E7`, `WD_E8`, `WD_V7`, `WD_V8`, `WD_E9`, `WD_V9` |
+
+### Gen 1 (Bluetooth-only)
+
+Gen 1 devices advertise as `PM{S|D}...` (19-character name):
+
+| Prefix | Line type |
+|--------|-----------|
+| `PMS` | 30A single-line |
+| `PMD` | 50A dual-line |
+
+### Sensor behaviour
 
 **30A** models report a single set of voltage / current / power / energy / frequency sensors.
 
@@ -41,7 +55,7 @@ This integration supports the Gen 2 Bluetooth protocol used by current Power Wat
 
 ## Requirements
 
-* **Hardware:** Hughes Power Watchdog (Bluetooth models: WD\_V6, WD\_E7, WD\_E8).
+* **Hardware:** Hughes Power Watchdog — any Gen 1 (PM\*) or Gen 2 (WD\_\*) Bluetooth model.
 * **Bluetooth:** Bluetooth adapter or proxy on your Home Assistant host.
 * **Mobile App:** Ensure the Power Watchdog mobile app is **closed** when trying to connect, as the device only supports one active Bluetooth connection at a time.
 
