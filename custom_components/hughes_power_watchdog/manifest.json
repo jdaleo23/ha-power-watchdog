@@ -5,7 +5,7 @@
   "config_flow": true,
   "dependencies": ["bluetooth"],
   "documentation": "https://github.com/jdaleo23/ha-power-watchdog",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/jdaleo23/ha-power-watchdog/issues",
   "version": "0.0.0",
   "requirements": ["bleak-retry-connector>=2.0.0"],
@@ -14,7 +14,13 @@
       "service_uuid": "0000ff01-0000-1000-8000-00805f9b34fb"
     },
     {
-      "local_name": "WD_V6*"
+      "local_name": "WD_*"
+    },
+    {
+      "local_name": "PMS*"
+    },
+    {
+      "local_name": "PMD*"
     }
   ]
 }
