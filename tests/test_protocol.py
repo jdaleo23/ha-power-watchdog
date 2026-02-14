@@ -441,3 +441,119 @@ class TestSensorUpdateCallback:
         manager._notification_handler(None, bytearray(error_pkt))
 
         sensor.async_write_ha_state.assert_not_called()
+
+
+# ── Signed integer / edge-value tests ────────────────────────────────────────
+
+
+class TestSignedValues:
+    """The protocol uses big-endian signed int32.  Verify negative values parse."""
+
+    def test_negative_current(self):
+        """Negative current (e.g., reversed CT clamp) parses correctly."""
+        body = build_dl_data(current=-1.5)
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.current == -1.5
+
+    def test_negative_power(self):
+        """Negative power (e.g., reverse energy flow) parses correctly."""
+        body = build_dl_data(power=-500.0)
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.power == -500.0
+
+    def test_large_energy_value(self):
+        """Large cumulative energy value within int32 range."""
+        body = build_dl_data(energy=21000.0)  # 210 000 000 raw — fits in int32
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.energy == 21000.0
+
+    def test_high_voltage(self):
+        """Voltage near 250V (high end of split-phase)."""
+        body = build_dl_data(voltage=248.3)
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.voltage == 248.3
+
+    def test_50hz_frequency(self):
+        """50 Hz frequency (international grids)."""
+        body = build_dl_data(frequency=50.0)
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.frequency == 50.0
+
+
+# ── Invalid dataLen guard ────────────────────────────────────────────────────
+
+
+class TestInvalidDataLen:
+    """Verify the dataLen > MAX_BUFFER_SIZE guard in _try_parse_packet."""
+
+    def test_huge_datalen_skips_identifier(self, manager: PowerWatchdogManager):
+        """A packet claiming dataLen > MAX_BUFFER_SIZE skips the identifier."""
+        # Build a header with an absurdly large dataLen
+        header = struct.pack(">I", PACKET_IDENTIFIER)
+        header += bytes([1, 0, CMD_DL_REPORT])
+        header += struct.pack(">H", MAX_BUFFER_SIZE + 100)  # way too large
+
+        # Append a valid 30A packet right after the bad header
+        good_pkt = build_30a_packet(voltage=121.0)
+        manager._notification_handler(None, bytearray(header + good_pkt))
+
+        # The bad header should be skipped, and the good packet parsed
+        assert manager.data.l1.voltage == 121.0
+
+
+# ── Protocol constant sanity checks ──────────────────────────────────────────
+
+
+class TestProtocolConstants:
+    """Verify key protocol constants have correct values."""
+
+    def test_header_size(self):
+        """HEADER_SIZE = 4 (ident) + 1 (ver) + 1 (msg) + 1 (cmd) + 2 (len) = 9."""
+        assert HEADER_SIZE == 9
+
+    def test_tail_size(self):
+        """TAIL_SIZE = 2 bytes."""
+        assert TAIL_SIZE == 2
+
+    def test_dl_data_size(self):
+        """DL_DATA_SIZE = 34 bytes per line."""
+        assert DL_DATA_SIZE == 34
+
+    def test_packet_identifier(self):
+        """PACKET_IDENTIFIER = 0x24797740."""
+        assert PACKET_IDENTIFIER == 0x24797740
+
+    def test_packet_tail(self):
+        """PACKET_TAIL = 0x7121."""
+        assert PACKET_TAIL == 0x7121
+
+    def test_cmd_dl_report(self):
+        """CMD_DL_REPORT = 1."""
+        assert CMD_DL_REPORT == 1
+
+    def test_cmd_error_report(self):
+        """CMD_ERROR_REPORT = 2."""
+        assert CMD_ERROR_REPORT == 2
+
+    def test_cmd_alarm(self):
+        """CMD_ALARM = 14."""
+        assert CMD_ALARM == 14
+
+
+# ── Handshake payload validation ─────────────────────────────────────────────
+
+
+class TestHandshakePayload:
+    """Verify the handshake payload is correct."""
+
+    def test_handshake_is_ascii(self):
+        """HANDSHAKE_PAYLOAD decodes to the expected ASCII string."""
+        from custom_components.hughes_power_watchdog.const import HANDSHAKE_PAYLOAD
+
+        assert HANDSHAKE_PAYLOAD == b"!%!%,protocol,open,"
+
+    def test_handshake_length(self):
+        """HANDSHAKE_PAYLOAD is 19 bytes."""
+        from custom_components.hughes_power_watchdog.const import HANDSHAKE_PAYLOAD
+
+        assert len(HANDSHAKE_PAYLOAD) == 19
