@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add Hughes Power Watchdog",
-        "description": "Select your Power Watchdog from the list below. If it doesn't appear, ensure it is plugged in and not connected to your phone app.",
+        "description": "Select your Power Watchdog from the list below. Both 30A and 50A models are supported. If your device doesn't appear, ensure it is plugged in and not connected to the phone app.",
         "data": {
           "address": "Select Device",
           "device_name": "Integration Name"
