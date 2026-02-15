@@ -32,6 +32,26 @@ from .models import PowerWatchdogManager
 _LOGGER = logging.getLogger(__name__)
 
 
+def _device_info(manager: PowerWatchdogManager) -> DeviceInfo:
+    """Build the shared DeviceInfo dict for all sensor entities."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, manager.address)},
+        name=manager.name,
+        manufacturer="Hughes Autoformers",
+        model="Power Watchdog",
+    )
+
+
+def _error_attributes(code: int | None) -> dict[str, str | None]:
+    """Return human-readable error title and description for a given code."""
+    if code is not None and code in ERROR_CODES:
+        title, description = ERROR_CODES[code]
+    else:
+        title = None
+        description = None
+    return {"error_title": title, "error_description": description}
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -131,12 +151,7 @@ class PowerWatchdogLineSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = _device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -189,12 +204,7 @@ class PowerWatchdogTotalSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = _device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -235,12 +245,7 @@ class PowerWatchdogErrorSensor(SensorEntity):
         self._attr_name = f"{manager.name} {name_suffix}"
         self._attr_unique_id = f"{manager.address}_{line}_error_code"
         self._attr_icon = "mdi:alert-circle-outline"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = _device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -262,16 +267,7 @@ class PowerWatchdogErrorSensor(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
         """Include human-readable error title and description."""
-        code = self.native_value
-        if code is not None and code in ERROR_CODES:
-            title, description = ERROR_CODES[code]
-        else:
-            title = None
-            description = None
-        return {
-            "error_title": title,
-            "error_description": description,
-        }
+        return _error_attributes(self.native_value)
 
 
 class PowerWatchdogCombinedErrorSensor(SensorEntity):
@@ -288,12 +284,7 @@ class PowerWatchdogCombinedErrorSensor(SensorEntity):
         self._attr_name = f"{manager.name} {name_suffix}"
         self._attr_unique_id = f"{manager.address}_combined_error_code"
         self._attr_icon = "mdi:alert-circle-outline"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = _device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -320,13 +311,4 @@ class PowerWatchdogCombinedErrorSensor(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
         """Include human-readable error title and description."""
-        code = self.native_value
-        if code is not None and code in ERROR_CODES:
-            title, description = ERROR_CODES[code]
-        else:
-            title = None
-            description = None
-        return {
-            "error_title": title,
-            "error_description": description,
-        }
+        return _error_attributes(self.native_value)
