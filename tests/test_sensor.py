@@ -10,14 +10,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.helpers import build_30a_packet, build_50a_packet
+from tests.helpers import build_30a_packet, build_50a_packet, build_dl_data, build_packet
+from custom_components.hughes_power_watchdog.const import ERROR_CODES
 from custom_components.hughes_power_watchdog.models import (
     LineData,
     PowerWatchdogManager,
     WatchdogData,
 )
 from custom_components.hughes_power_watchdog.sensor import (
+    PowerWatchdogCombinedErrorSensor,
+    PowerWatchdogErrorSensor,
     PowerWatchdogLineSensor,
+    PowerWatchdogTemperatureSensor,
     PowerWatchdogTotalSensor,
 )
 
@@ -49,6 +53,29 @@ def manager_50a(manager: PowerWatchdogManager) -> PowerWatchdogManager:
     )
     manager._notification_handler(None, bytearray(pkt))
     return manager
+
+
+@pytest.fixture()
+def manager_e8() -> PowerWatchdogManager:
+    """Manager with an E8 (50A, temperature-capable) device name."""
+    hass = MagicMock()
+    return PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "WD_E8_aabbccddeeff")
+
+
+@pytest.fixture()
+def manager_e8_30a(manager_e8: PowerWatchdogManager) -> PowerWatchdogManager:
+    """E8 manager with a 30A data update (for simpler temp tests)."""
+    pkt = build_30a_packet(temperature=42)
+    manager_e8._notification_handler(None, bytearray(pkt))
+    return manager_e8
+
+
+@pytest.fixture()
+def manager_e8_50a(manager_e8: PowerWatchdogManager) -> PowerWatchdogManager:
+    """E8 manager with a 50A data update."""
+    pkt = build_50a_packet(l1_temperature=30, l2_temperature=35)
+    manager_e8._notification_handler(None, bytearray(pkt))
+    return manager_e8
 
 
 def _make_line_sensor(
@@ -311,3 +338,308 @@ class TestEndToEnd:
         _make_line_sensor(manager, line="l1", field="current")
         _make_total_sensor(manager, field="power")
         assert len(manager.sensors) == 3
+
+
+# ── Helper constructors for new sensor types ─────────────────────────────────
+
+
+def _make_error_sensor(
+    mgr: PowerWatchdogManager,
+    line: str = "l1",
+) -> PowerWatchdogErrorSensor:
+    """Create an ErrorSensor for the given line."""
+    return PowerWatchdogErrorSensor(
+        mgr,
+        name_suffix=f"{line.upper()} Error Code",
+        line=line,
+    )
+
+
+def _make_temp_sensor(
+    mgr: PowerWatchdogManager,
+    line: str = "l1",
+) -> PowerWatchdogTemperatureSensor:
+    """Create a TemperatureSensor for the given line."""
+    return PowerWatchdogTemperatureSensor(
+        mgr,
+        name_suffix=f"{line.upper()} Temperature",
+        device_class=MagicMock(),
+        unit="°C",
+        line=line,
+        field="temperature",
+    )
+
+
+def _make_combined_error_sensor(
+    mgr: PowerWatchdogManager,
+) -> PowerWatchdogCombinedErrorSensor:
+    """Create a CombinedErrorSensor."""
+    return PowerWatchdogCombinedErrorSensor(
+        mgr,
+        name_suffix="Error Code",
+    )
+
+
+# ── PowerWatchdogErrorSensor tests ───────────────────────────────────────────
+
+
+class TestErrorSensorAvailability:
+    """Tests for the `available` property of per-line error sensors."""
+
+    def test_l1_unavailable_before_data(self, manager: PowerWatchdogManager):
+        """L1 error sensor is unavailable when no data has arrived."""
+        sensor = _make_error_sensor(manager, line="l1")
+        assert sensor.available is False
+
+    def test_l1_available_after_30a_data(self, manager_30a: PowerWatchdogManager):
+        """L1 error sensor is available after a 30A update."""
+        sensor = _make_error_sensor(manager_30a, line="l1")
+        assert sensor.available is True
+
+    def test_l2_unavailable_on_30a(self, manager_30a: PowerWatchdogManager):
+        """L2 error sensor is unavailable on a 30A single-line model."""
+        sensor = _make_error_sensor(manager_30a, line="l2")
+        assert sensor.available is False
+
+    def test_l2_available_on_50a(self, manager_50a: PowerWatchdogManager):
+        """L2 error sensor is available on a 50A dual-line model."""
+        sensor = _make_error_sensor(manager_50a, line="l2")
+        assert sensor.available is True
+
+
+class TestErrorSensorValue:
+    """Tests for the `native_value` property of per-line error sensors."""
+
+    def test_l1_default_error_code_zero(self, manager_30a: PowerWatchdogManager):
+        """L1 error code is 0 (no error) by default."""
+        sensor = _make_error_sensor(manager_30a, line="l1")
+        assert sensor.native_value == 0
+
+    def test_l1_error_code_nonzero(self, manager: PowerWatchdogManager):
+        """L1 error code reflects the value from the packet."""
+        pkt = build_30a_packet(error=5)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_error_sensor(manager, line="l1")
+        assert sensor.native_value == 5
+
+    def test_l2_error_code(self, manager: PowerWatchdogManager):
+        """L2 error code reflects the value from the packet."""
+        pkt = build_50a_packet(l1_error=0, l2_error=7)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_error_sensor(manager, line="l2")
+        assert sensor.native_value == 7
+
+    def test_returns_none_before_data(self, manager: PowerWatchdogManager):
+        """native_value is None when no data has arrived."""
+        sensor = _make_error_sensor(manager, line="l1")
+        assert sensor.native_value is None
+
+    def test_high_error_code(self, manager: PowerWatchdogManager):
+        """Error codes above 9 (Gen2-only) are passed through."""
+        pkt = build_30a_packet(error=11)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_error_sensor(manager, line="l1")
+        assert sensor.native_value == 11
+
+
+class TestErrorSensorAttributes:
+    """Tests for error sensor extra_state_attributes."""
+
+    def test_unique_id_format(self, manager: PowerWatchdogManager):
+        """unique_id follows the {address}_{line}_error_code pattern."""
+        sensor = _make_error_sensor(manager, line="l1")
+        assert sensor._attr_unique_id == "AA:BB:CC:DD:EE:FF_l1_error_code"
+
+    def test_attributes_for_known_code(self, manager: PowerWatchdogManager):
+        """Known error code includes title and description."""
+        pkt = build_30a_packet(error=7)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_error_sensor(manager, line="l1")
+        attrs = sensor.extra_state_attributes
+        assert attrs["error_title"] == "Missing Ground"
+        assert "ground" in attrs["error_description"].lower()
+
+    def test_attributes_for_code_zero(self, manager_30a: PowerWatchdogManager):
+        """Error code 0 maps to 'No Error'."""
+        sensor = _make_error_sensor(manager_30a, line="l1")
+        attrs = sensor.extra_state_attributes
+        assert attrs["error_title"] == "No Error"
+
+    def test_attributes_for_unknown_code(self, manager: PowerWatchdogManager):
+        """Unknown error code (e.g. 255) returns None attributes."""
+        # Manually set a code not in the mapping
+        pkt = build_30a_packet(error=255)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_error_sensor(manager, line="l1")
+        attrs = sensor.extra_state_attributes
+        assert attrs["error_title"] is None
+        assert attrs["error_description"] is None
+
+    def test_should_poll_disabled(self, manager: PowerWatchdogManager):
+        """Error sensors are push-based (no polling)."""
+        sensor = _make_error_sensor(manager, line="l1")
+        assert sensor._attr_should_poll is False
+
+
+# ── PowerWatchdogCombinedErrorSensor tests ───────────────────────────────────
+
+
+class TestCombinedErrorSensor:
+    """Tests for the combined (worst-case) error sensor."""
+
+    def test_unavailable_before_data(self, manager: PowerWatchdogManager):
+        """Combined error sensor is unavailable when no data has arrived."""
+        sensor = _make_combined_error_sensor(manager)
+        assert sensor.available is False
+
+    def test_available_after_data(self, manager_30a: PowerWatchdogManager):
+        """Combined error sensor is available after a 30A update."""
+        sensor = _make_combined_error_sensor(manager_30a)
+        assert sensor.available is True
+
+    def test_30a_returns_l1_value(self, manager: PowerWatchdogManager):
+        """On 30A, combined error equals L1 error."""
+        pkt = build_30a_packet(error=3)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_combined_error_sensor(manager)
+        assert sensor.native_value == 3
+
+    def test_50a_returns_max(self, manager: PowerWatchdogManager):
+        """On 50A, combined error is max(L1, L2)."""
+        pkt = build_50a_packet(l1_error=2, l2_error=7)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_combined_error_sensor(manager)
+        assert sensor.native_value == 7
+
+    def test_50a_l1_higher(self, manager: PowerWatchdogManager):
+        """On 50A with L1 > L2, combined returns L1 error."""
+        pkt = build_50a_packet(l1_error=9, l2_error=1)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_combined_error_sensor(manager)
+        assert sensor.native_value == 9
+
+    def test_50a_both_zero(self, manager: PowerWatchdogManager):
+        """On 50A with no errors, combined is 0."""
+        pkt = build_50a_packet(l1_error=0, l2_error=0)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_combined_error_sensor(manager)
+        assert sensor.native_value == 0
+
+    def test_unique_id_format(self, manager: PowerWatchdogManager):
+        """unique_id follows the {address}_combined_error_code pattern."""
+        sensor = _make_combined_error_sensor(manager)
+        assert sensor._attr_unique_id == "AA:BB:CC:DD:EE:FF_combined_error_code"
+
+    def test_attributes_for_combined_error(self, manager: PowerWatchdogManager):
+        """Combined error sensor includes error title/description."""
+        pkt = build_50a_packet(l1_error=0, l2_error=9)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_combined_error_sensor(manager)
+        attrs = sensor.extra_state_attributes
+        assert attrs["error_title"] == "Surge Protection Used Up"
+
+
+# ── Boost sensor tests ───────────────────────────────────────────────────────
+
+
+class TestBoostSensorValue:
+    """Tests for boost status exposed via PowerWatchdogLineSensor."""
+
+    def test_boost_false(self, manager_30a: PowerWatchdogManager):
+        """Boost is False by default."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="boost")
+        assert sensor.native_value is False
+
+    def test_boost_true(self, manager: PowerWatchdogManager):
+        """Boost is True when the device is boosting."""
+        pkt = build_30a_packet(boost=True)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_line_sensor(manager, line="l1", field="boost")
+        assert sensor.native_value is True
+
+    def test_l2_boost(self, manager: PowerWatchdogManager):
+        """L2 boost is accessible on 50A models."""
+        pkt = build_50a_packet()
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_line_sensor(manager, line="l2", field="boost")
+        assert sensor.available is True
+        assert sensor.native_value is False
+
+
+# ── Temperature sensor tests ─────────────────────────────────────────────────
+
+
+class TestTemperatureSensorValue:
+    """Tests for temperature exposed via PowerWatchdogTemperatureSensor (E8/V8 only)."""
+
+    def test_e8_default_temperature(self, manager_e8_30a: PowerWatchdogManager):
+        """Temperature value on an E8 device."""
+        sensor = _make_temp_sensor(manager_e8_30a, line="l1")
+        assert sensor.native_value == 42
+
+    def test_e8_available(self, manager_e8_30a: PowerWatchdogManager):
+        """Temperature sensor is available on E8 with data."""
+        sensor = _make_temp_sensor(manager_e8_30a, line="l1")
+        assert sensor.available is True
+
+    def test_e8_l2_temperature(self, manager_e8_50a: PowerWatchdogManager):
+        """L2 temperature is accessible on E8 50A models."""
+        sensor_l1 = _make_temp_sensor(manager_e8_50a, line="l1")
+        sensor_l2 = _make_temp_sensor(manager_e8_50a, line="l2")
+        assert sensor_l1.native_value == 30
+        assert sensor_l2.native_value == 35
+
+    def test_unavailable_on_non_e8(self, manager_30a: PowerWatchdogManager):
+        """Temperature sensor is unavailable on non-E8/V8 models even with data."""
+        sensor = _make_temp_sensor(manager_30a, line="l1")
+        assert sensor.available is False
+
+    def test_unavailable_before_data_on_e8(self, manager_e8: PowerWatchdogManager):
+        """Temperature sensor is unavailable on E8 before any data arrives."""
+        sensor = _make_temp_sensor(manager_e8, line="l1")
+        assert sensor.available is False
+
+    def test_v8_also_supported(self):
+        """V8 models also report temperature."""
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "WD_V8_112233445566")
+        pkt = build_30a_packet(temperature=55)
+        mgr._notification_handler(None, bytearray(pkt))
+        sensor = _make_temp_sensor(mgr, line="l1")
+        assert sensor.available is True
+        assert sensor.native_value == 55
+
+    def test_e5_not_supported(self):
+        """E5 models do not report temperature."""
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "WD_E5_112233445566")
+        pkt = build_30a_packet(temperature=25)
+        mgr._notification_handler(None, bytearray(pkt))
+        sensor = _make_temp_sensor(mgr, line="l1")
+        assert sensor.available is False
+
+
+# ── Status sensor tests ──────────────────────────────────────────────────────
+
+
+class TestStatusSensorValue:
+    """Tests for status byte exposed via PowerWatchdogLineSensor."""
+
+    def test_default_status(self, manager_30a: PowerWatchdogManager):
+        """Default status from test helper is 1."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="status")
+        assert sensor.native_value == 1
+
+    def test_custom_status(self, manager: PowerWatchdogManager):
+        """Status reflects the value from the packet."""
+        pkt = build_30a_packet(status=5)
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_line_sensor(manager, line="l1", field="status")
+        assert sensor.native_value == 5
+
+    def test_l2_status(self, manager: PowerWatchdogManager):
+        """L2 status is accessible on 50A models."""
+        pkt = build_50a_packet()
+        manager._notification_handler(None, bytearray(pkt))
+        sensor = _make_line_sensor(manager, line="l2", field="status")
+        assert sensor.available is True

@@ -33,6 +33,86 @@ DL_DATA_SIZE = 34
 # ── Pre-built command packets ───────────────────────────────────────────────
 CMD_RESET_ENERGY = "2479774001060300007121"
 
+# ── Error codes (byte 32 of each DLData block, range 0-14) ──────────────────
+# Codes 0-9 and 11-12 are common to Gen1 and Gen2 hardware.
+# Codes 13-14 are Gen2-only.  Code 10 is reserved / unused.
+ERROR_CODES: dict[int, tuple[str, str]] = {
+    0: (
+        "No Error",
+        "Normal operation.",
+    ),
+    1: (
+        "Line 1 Voltage Error",
+        "Input voltage has exceeded 132V or dropped below 104V. The Watchdog "
+        "has shut off power to protect the RV. Power will be restored "
+        "automatically after voltage remains in the safe range for 90 seconds.",
+    ),
+    2: (
+        "Line 2 Voltage Error",
+        "Same as code 1, but on Line 2 (50A models only).",
+    ),
+    3: (
+        "Line 1 Over Current",
+        "Current draw exceeds the rated amperage on Line 1. The park breaker "
+        "should have tripped but did not. Reduce load by turning off a major "
+        "appliance. Low voltage can cause higher amperage draw.",
+    ),
+    4: (
+        "Line 2 Over Current",
+        "Same as code 3, but on Line 2 (50A models only).",
+    ),
+    5: (
+        "Line 1 Neutral Reversed",
+        "Hot and neutral wires are reversed at the power source. This is a "
+        "serious wiring fault that can damage appliances. The Watchdog will "
+        "not allow power through until the condition is corrected. Power "
+        "restores automatically after a 90-second delay once fixed.",
+    ),
+    6: (
+        "Line 2 Neutral Reversed",
+        "Same as code 5, but on Line 2 (50A models only). Once fixed, the "
+        "device may require a physical unplug/replug to reset.",
+    ),
+    7: (
+        "Missing Ground",
+        "The ground connection has been lost. Without a ground, the safety "
+        "breaker cannot trip if a wire contacts the RV chassis, creating a "
+        "shock hazard. The Watchdog will not allow power without a ground "
+        "connection. Power restores automatically after a 90-second delay "
+        "once fixed.",
+    ),
+    8: (
+        "Neutral Missing",
+        "The neutral return path is absent inside the RV. Without a neutral, "
+        "appliances will burn up quickly. The Watchdog will not allow power "
+        "until the neutral circuit is restored.",
+    ),
+    9: (
+        "Surge Protection Used Up",
+        "The surge absorption capacity of the internal MOV board has been "
+        "exhausted. The RV will continue to operate but is no longer "
+        "protected against surges. The surge board should be replaced.",
+    ),
+    11: (
+        "Line 1 Frequency Error",
+        "AC frequency on Line 1 is outside the acceptable range.",
+    ),
+    12: (
+        "Line 2 Frequency Error",
+        "AC frequency on Line 2 is outside the acceptable range.",
+    ),
+    13: (
+        "Gen2 Error 13",
+        "Additional error condition. Model-specific; reported on E8/V8 "
+        "50A units.",
+    ),
+    14: (
+        "Gen2 Error 14",
+        "Additional error condition. Model-specific; reported on E6/V6, "
+        "E8/V8, and E5/V5 units.",
+    ),
+}
+
 # ── Config-flow keys ────────────────────────────────────────────────────────
 CONF_DEVICE_NAME = "device_name"
 

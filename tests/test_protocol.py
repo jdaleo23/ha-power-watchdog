@@ -100,6 +100,18 @@ class TestParseDlData:
         result = PowerWatchdogManager._parse_dl_data(body, 0)
         assert result.boost is False
 
+    def test_temperature(self):
+        """Temperature byte passed through as-is."""
+        body = build_dl_data(temperature=42)
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.temperature == 42
+
+    def test_temperature_zero(self):
+        """Temperature of zero parses correctly."""
+        body = build_dl_data(temperature=0)
+        result = PowerWatchdogManager._parse_dl_data(body, 0)
+        assert result.temperature == 0
+
     def test_all_fields_together(self):
         """Verify all fields are parsed correctly in a single block."""
         body = build_dl_data(
@@ -112,6 +124,7 @@ class TestParseDlData:
             error=5,
             status=1,
             boost=True,
+            temperature=37,
         )
         result = PowerWatchdogManager._parse_dl_data(body, 0)
         assert result.voltage == 120.1
@@ -123,6 +136,7 @@ class TestParseDlData:
         assert result.error_code == 5
         assert result.status == 1
         assert result.boost is True
+        assert result.temperature == 37
 
     def test_offset_into_larger_buffer(self):
         """Parsing with a non-zero offset reads the second DLData block."""
