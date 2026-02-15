@@ -89,13 +89,13 @@ async def async_setup_entry(
         PowerWatchdogLineSensor(manager, "L2 Boost", None, None, "l2", "boost",
                                state_class=None),
 
-        # ── Temperature ────────────────────────────────────────────────────
-        PowerWatchdogLineSensor(manager, "L1 Temperature",
-                               SensorDeviceClass.TEMPERATURE,
-                               UnitOfTemperature.CELSIUS, "l1", "temperature"),
-        PowerWatchdogLineSensor(manager, "L2 Temperature",
-                               SensorDeviceClass.TEMPERATURE,
-                               UnitOfTemperature.CELSIUS, "l2", "temperature"),
+        # ── Temperature (E8/V8 models only) ───────────────────────────────
+        PowerWatchdogTemperatureSensor(manager, "L1 Temperature",
+                                      SensorDeviceClass.TEMPERATURE,
+                                      UnitOfTemperature.CELSIUS, "l1", "temperature"),
+        PowerWatchdogTemperatureSensor(manager, "L2 Temperature",
+                                      SensorDeviceClass.TEMPERATURE,
+                                      UnitOfTemperature.CELSIUS, "l2", "temperature"),
 
         # ── Device status ──────────────────────────────────────────────────
         PowerWatchdogLineSensor(manager, "L1 Status", None, None, "l1", "status",
@@ -154,6 +154,17 @@ class PowerWatchdogLineSensor(SensorEntity):
         if line_data is None:
             return None
         return getattr(line_data, self._field, None)
+
+
+class PowerWatchdogTemperatureSensor(PowerWatchdogLineSensor):
+    """Temperature sensor — only available on E8/V8 hardware."""
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the device model does not support temperature."""
+        if not self._manager.has_temperature:
+            return False
+        return super().available
 
 
 class PowerWatchdogTotalSensor(SensorEntity):

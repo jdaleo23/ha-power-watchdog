@@ -24,7 +24,7 @@ DLReport (cmd 1) body contains one or two 34-byte *DLData* blocks:
     24      1   backlight
     25      1   neutralDetection
     26      1   boost flag        1 = boosting
-    27      1   temperature
+    27      1   temperature       E8/V8 only (0 on other models)
     28      4   frequency         / 100     → Hz
     32      1   error code        0-14
     33      1   status
@@ -97,6 +97,10 @@ class WatchdogData:
 class PowerWatchdogManager:
     """Manages the Bluetooth connection and data parsing."""
 
+    # Gen2 model types whose BLE name contains this substring report a
+    # valid temperature reading at byte 27 of each DLData block.
+    _TEMP_MODEL_TYPES = ("E8", "V8")
+
     def __init__(self, hass: HomeAssistant, address: str, name: str) -> None:
         self.hass = hass
         self.address = address
@@ -108,6 +112,11 @@ class PowerWatchdogManager:
         # Packet reassembly buffer — BLE notifications may deliver partial
         # packets when the negotiated MTU is smaller than the full frame.
         self._rx_buffer = bytearray()
+
+    @property
+    def has_temperature(self) -> bool:
+        """True if this device model reports temperature (E8/V8 only)."""
+        return any(t in self.name for t in self._TEMP_MODEL_TYPES)
 
     def register_sensor(self, sensor) -> None:  # noqa: ANN001
         """Register a sensor entity for state updates."""

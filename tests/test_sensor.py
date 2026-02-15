@@ -21,6 +21,7 @@ from custom_components.hughes_power_watchdog.sensor import (
     PowerWatchdogCombinedErrorSensor,
     PowerWatchdogErrorSensor,
     PowerWatchdogLineSensor,
+    PowerWatchdogTemperatureSensor,
     PowerWatchdogTotalSensor,
 )
 
@@ -52,6 +53,29 @@ def manager_50a(manager: PowerWatchdogManager) -> PowerWatchdogManager:
     )
     manager._notification_handler(None, bytearray(pkt))
     return manager
+
+
+@pytest.fixture()
+def manager_e8() -> PowerWatchdogManager:
+    """Manager with an E8 (50A, temperature-capable) device name."""
+    hass = MagicMock()
+    return PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "WD_E8_aabbccddeeff")
+
+
+@pytest.fixture()
+def manager_e8_30a(manager_e8: PowerWatchdogManager) -> PowerWatchdogManager:
+    """E8 manager with a 30A data update (for simpler temp tests)."""
+    pkt = build_30a_packet(temperature=42)
+    manager_e8._notification_handler(None, bytearray(pkt))
+    return manager_e8
+
+
+@pytest.fixture()
+def manager_e8_50a(manager_e8: PowerWatchdogManager) -> PowerWatchdogManager:
+    """E8 manager with a 50A data update."""
+    pkt = build_50a_packet(l1_temperature=30, l2_temperature=35)
+    manager_e8._notification_handler(None, bytearray(pkt))
+    return manager_e8
 
 
 def _make_line_sensor(
@@ -331,6 +355,21 @@ def _make_error_sensor(
     )
 
 
+def _make_temp_sensor(
+    mgr: PowerWatchdogManager,
+    line: str = "l1",
+) -> PowerWatchdogTemperatureSensor:
+    """Create a TemperatureSensor for the given line."""
+    return PowerWatchdogTemperatureSensor(
+        mgr,
+        name_suffix=f"{line.upper()} Temperature",
+        device_class=MagicMock(),
+        unit="°C",
+        line=line,
+        field="temperature",
+    )
+
+
 def _make_combined_error_sensor(
     mgr: PowerWatchdogManager,
 ) -> PowerWatchdogCombinedErrorSensor:
@@ -531,32 +570,52 @@ class TestBoostSensorValue:
 
 
 class TestTemperatureSensorValue:
-    """Tests for temperature exposed via PowerWatchdogLineSensor."""
+    """Tests for temperature exposed via PowerWatchdogTemperatureSensor (E8/V8 only)."""
 
-    def test_default_temperature(self, manager_30a: PowerWatchdogManager):
-        """Default temperature from test helper is 25."""
-        sensor = _make_line_sensor(manager_30a, line="l1", field="temperature")
-        assert sensor.native_value == 25
-
-    def test_custom_temperature(self, manager: PowerWatchdogManager):
-        """Temperature reflects the value from the packet."""
-        pkt = build_30a_packet(temperature=42)
-        manager._notification_handler(None, bytearray(pkt))
-        sensor = _make_line_sensor(manager, line="l1", field="temperature")
+    def test_e8_default_temperature(self, manager_e8_30a: PowerWatchdogManager):
+        """Temperature value on an E8 device."""
+        sensor = _make_temp_sensor(manager_e8_30a, line="l1")
         assert sensor.native_value == 42
 
-    def test_l2_temperature(self, manager: PowerWatchdogManager):
-        """L2 temperature is accessible on 50A models."""
-        pkt = build_50a_packet(l1_temperature=30, l2_temperature=35)
-        manager._notification_handler(None, bytearray(pkt))
-        sensor_l1 = _make_line_sensor(manager, line="l1", field="temperature")
-        sensor_l2 = _make_line_sensor(manager, line="l2", field="temperature")
+    def test_e8_available(self, manager_e8_30a: PowerWatchdogManager):
+        """Temperature sensor is available on E8 with data."""
+        sensor = _make_temp_sensor(manager_e8_30a, line="l1")
+        assert sensor.available is True
+
+    def test_e8_l2_temperature(self, manager_e8_50a: PowerWatchdogManager):
+        """L2 temperature is accessible on E8 50A models."""
+        sensor_l1 = _make_temp_sensor(manager_e8_50a, line="l1")
+        sensor_l2 = _make_temp_sensor(manager_e8_50a, line="l2")
         assert sensor_l1.native_value == 30
         assert sensor_l2.native_value == 35
 
-    def test_unavailable_before_data(self, manager: PowerWatchdogManager):
-        """Temperature is unavailable before data arrives."""
-        sensor = _make_line_sensor(manager, line="l1", field="temperature")
+    def test_unavailable_on_non_e8(self, manager_30a: PowerWatchdogManager):
+        """Temperature sensor is unavailable on non-E8/V8 models even with data."""
+        sensor = _make_temp_sensor(manager_30a, line="l1")
+        assert sensor.available is False
+
+    def test_unavailable_before_data_on_e8(self, manager_e8: PowerWatchdogManager):
+        """Temperature sensor is unavailable on E8 before any data arrives."""
+        sensor = _make_temp_sensor(manager_e8, line="l1")
+        assert sensor.available is False
+
+    def test_v8_also_supported(self):
+        """V8 models also report temperature."""
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "WD_V8_112233445566")
+        pkt = build_30a_packet(temperature=55)
+        mgr._notification_handler(None, bytearray(pkt))
+        sensor = _make_temp_sensor(mgr, line="l1")
+        assert sensor.available is True
+        assert sensor.native_value == 55
+
+    def test_e5_not_supported(self):
+        """E5 models do not report temperature."""
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "WD_E5_112233445566")
+        pkt = build_30a_packet(temperature=25)
+        mgr._notification_handler(None, bytearray(pkt))
+        sensor = _make_temp_sensor(mgr, line="l1")
         assert sensor.available is False
 
 
