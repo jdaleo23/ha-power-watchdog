@@ -26,7 +26,7 @@ DLReport (cmd 1) body contains one or two 34-byte *DLData* blocks:
     26      1   boost flag        1 = boosting
     27      1   temperature
     28      4   frequency         / 100     → Hz
-    32      1   error code        0-9
+    32      1   error code        0-14
     33      1   status
 
 30A models send a single 34-byte block.
@@ -79,6 +79,7 @@ class LineData:
     error_code: int | None = None
     status: int | None = None
     boost: bool | None = None
+    temperature: int | None = None
 
 
 @dataclass
@@ -264,6 +265,7 @@ class PowerWatchdogManager:
         # o+16 … o+19 = reserved (temp1)
         output_v_raw = struct.unpack_from(">i", body, o + 20)[0]
         boost = body[o + 26] == 1
+        temperature = body[o + 27]
         freq_raw = struct.unpack_from(">i", body, o + 28)[0]
         error_code = body[o + 32]
         status = body[o + 33]
@@ -278,4 +280,5 @@ class PowerWatchdogManager:
             error_code=error_code,
             status=status,
             boost=boost,
+            temperature=temperature,
         )

@@ -21,6 +21,7 @@ def build_dl_data(
     error: int = 0,
     status: int = 1,
     boost: bool = False,
+    temperature: int = 25,
 ) -> bytes:
     """Build a 34-byte DLData block with the given values."""
     return (
@@ -30,7 +31,7 @@ def build_dl_data(
         + struct.pack(">i", int(energy * 10_000))
         + struct.pack(">i", 0)  # temp1 (reserved)
         + struct.pack(">i", int(output_voltage * 10_000))
-        + bytes([5, 0, 1 if boost else 0, 25])  # backlight, neutral, boost, temp
+        + bytes([5, 0, 1 if boost else 0, temperature])  # backlight, neutral, boost, temp
         + struct.pack(">i", int(frequency * 100))
         + bytes([error, status])
     )
@@ -54,12 +55,15 @@ def build_30a_packet(
     frequency: float = 60.0,
     error: int = 0,
     status: int = 1,
+    boost: bool = False,
+    temperature: int = 25,
 ) -> bytes:
     """Build a complete 30A single-line DLReport packet."""
     body = build_dl_data(
         voltage=voltage, current=current, power=power,
         energy=energy, output_voltage=output_voltage,
         frequency=frequency, error=error, status=status,
+        boost=boost, temperature=temperature,
     )
     return build_packet(CMD_DL_REPORT, body)
 
@@ -74,14 +78,20 @@ def build_50a_packet(
     l2_power: float = 7.0,
     l2_energy: float = 500.25,
     frequency: float = 60.0,
+    l1_error: int = 0,
+    l2_error: int = 0,
+    l1_temperature: int = 25,
+    l2_temperature: int = 25,
 ) -> bytes:
     """Build a complete 50A dual-line DLReport packet (L1 + L2)."""
     l1 = build_dl_data(
         voltage=l1_voltage, current=l1_current, power=l1_power,
         energy=l1_energy, frequency=frequency,
+        error=l1_error, temperature=l1_temperature,
     )
     l2 = build_dl_data(
         voltage=l2_voltage, current=l2_current, power=l2_power,
         energy=l2_energy, frequency=frequency,
+        error=l2_error, temperature=l2_temperature,
     )
     return build_packet(CMD_DL_REPORT, l1 + l2)

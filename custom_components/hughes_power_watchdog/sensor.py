@@ -20,12 +20,13 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfFrequency,
     UnitOfPower,
+    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_DEVICE_NAME, DOMAIN
+from .const import CONF_DEVICE_NAME, DOMAIN, ERROR_CODES
 from .models import PowerWatchdogManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,6 +77,31 @@ async def async_setup_entry(
         PowerWatchdogTotalSensor(manager, "Total Energy", SensorDeviceClass.ENERGY,
                                  UnitOfEnergy.KILO_WATT_HOUR, "energy",
                                  state_class=SensorStateClass.TOTAL_INCREASING),
+
+        # ── Error codes ────────────────────────────────────────────────────
+        PowerWatchdogErrorSensor(manager, "L1 Error Code", "l1"),
+        PowerWatchdogErrorSensor(manager, "L2 Error Code", "l2"),
+        PowerWatchdogCombinedErrorSensor(manager, "Error Code"),
+
+        # ── Boost status ───────────────────────────────────────────────────
+        PowerWatchdogLineSensor(manager, "L1 Boost", None, None, "l1", "boost",
+                               state_class=None),
+        PowerWatchdogLineSensor(manager, "L2 Boost", None, None, "l2", "boost",
+                               state_class=None),
+
+        # ── Temperature ────────────────────────────────────────────────────
+        PowerWatchdogLineSensor(manager, "L1 Temperature",
+                               SensorDeviceClass.TEMPERATURE,
+                               UnitOfTemperature.CELSIUS, "l1", "temperature"),
+        PowerWatchdogLineSensor(manager, "L2 Temperature",
+                               SensorDeviceClass.TEMPERATURE,
+                               UnitOfTemperature.CELSIUS, "l2", "temperature"),
+
+        # ── Device status ──────────────────────────────────────────────────
+        PowerWatchdogLineSensor(manager, "L1 Status", None, None, "l1", "status",
+                               state_class=None),
+        PowerWatchdogLineSensor(manager, "L2 Status", None, None, "l2", "status",
+                               state_class=None),
     ]
 
     async_add_entities(sensors)
@@ -180,3 +206,116 @@ class PowerWatchdogTotalSensor(SensorEntity):
             if l2_val is not None:
                 total = round(total + l2_val, 2)
         return total
+
+
+class PowerWatchdogErrorSensor(SensorEntity):
+    """Sensor for a per-line error code with human-readable attributes."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        manager: PowerWatchdogManager,
+        name_suffix: str,
+        line: str,
+    ) -> None:
+        self._manager = manager
+        self._line = line  # "l1" or "l2"
+        self._attr_name = f"{manager.name} {name_suffix}"
+        self._attr_unique_id = f"{manager.address}_{line}_error_code"
+        self._attr_icon = "mdi:alert-circle-outline"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, manager.address)},
+            name=manager.name,
+            manufacturer="Hughes Autoformers",
+            model="Power Watchdog",
+        )
+        manager.register_sensor(self)
+
+    @property
+    def available(self) -> bool:
+        """L2 error sensor is unavailable until 50A data arrives."""
+        if self._line == "l2" and not self._manager.data.has_l2:
+            return False
+        line_data = getattr(self._manager.data, self._line, None)
+        return line_data is not None and line_data.error_code is not None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the raw error code integer."""
+        line_data = getattr(self._manager.data, self._line, None)
+        if line_data is None:
+            return None
+        return line_data.error_code
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Include human-readable error title and description."""
+        code = self.native_value
+        if code is not None and code in ERROR_CODES:
+            title, description = ERROR_CODES[code]
+        else:
+            title = None
+            description = None
+        return {
+            "error_title": title,
+            "error_description": description,
+        }
+
+
+class PowerWatchdogCombinedErrorSensor(SensorEntity):
+    """Sensor that reports the worst (highest) error code across L1 and L2."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        manager: PowerWatchdogManager,
+        name_suffix: str,
+    ) -> None:
+        self._manager = manager
+        self._attr_name = f"{manager.name} {name_suffix}"
+        self._attr_unique_id = f"{manager.address}_combined_error_code"
+        self._attr_icon = "mdi:alert-circle-outline"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, manager.address)},
+            name=manager.name,
+            manufacturer="Hughes Autoformers",
+            model="Power Watchdog",
+        )
+        manager.register_sensor(self)
+
+    @property
+    def available(self) -> bool:
+        """Available as long as L1 data exists."""
+        return (
+            self._manager.data.l1 is not None
+            and self._manager.data.l1.error_code is not None
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return max(L1 error, L2 error) — or just L1 for 30A models."""
+        l1 = self._manager.data.l1
+        if l1 is None or l1.error_code is None:
+            return None
+        error_code = l1.error_code
+        if self._manager.data.has_l2:
+            l2 = self._manager.data.l2
+            if l2 is not None and l2.error_code is not None:
+                error_code = max(error_code, l2.error_code)
+        return error_code
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Include human-readable error title and description."""
+        code = self.native_value
+        if code is not None and code in ERROR_CODES:
+            title, description = ERROR_CODES[code]
+        else:
+            title = None
+            description = None
+        return {
+            "error_title": title,
+            "error_description": description,
+        }
