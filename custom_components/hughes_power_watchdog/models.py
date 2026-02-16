@@ -150,6 +150,12 @@ class PowerWatchdogManager:
                 while self.client and self.client.is_connected:
                     await asyncio.sleep(5)
 
+            except asyncio.CancelledError:
+                _LOGGER.debug("Task cancelled, disconnecting...")
+                if self.client:
+                    await self.client.disconnect()
+                raise
+
             except (BleakError, asyncio.TimeoutError) as ex:
                 _LOGGER.warning("Connection failed: %s. Retrying in 10 s…", ex)
                 await asyncio.sleep(10)
@@ -251,7 +257,8 @@ class PowerWatchdogManager:
 
         # Push update to all registered sensor entities
         for sensor in self.sensors:
-            sensor.async_write_ha_state()
+            if sensor.hass:
+                sensor.async_write_ha_state()
 
     @staticmethod
     def _parse_dl_data(body: bytes, offset: int) -> LineData:
