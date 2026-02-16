@@ -5,7 +5,7 @@
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-red.svg?style=for-the-badge)](https://paypal.me/jordandaleo)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_☕-red?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=grey)](https://ko-fi.com/jdaleo23)
 
-# Hughes Power Watchdog - Smart Surge Protector <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/PWD logo.png">
+# Hughes Power Watchdog - Smart Surge Protector <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/PWD logo.png" alt="Power Watchdog logo">
 
 A custom Home Assistant integration for the [**Hughes Power Watchdog**](https://www.powerwatchdog.com/surge-protectors) smart surge protectors. This integration uses Bluetooth Low Energy (BLE) to provide real-time monitoring of your RV's power status directly in Home Assistant.
 
@@ -115,8 +115,8 @@ All L1 sensors above, plus an identical set of L2 sensors. **Total Power** and *
 ## Dashboard Setup
 Here is a sample layout for your 30A connection showing the 80% safety limits and available sensors:
 
-<img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/safety_gauges.png" width="300">
-<img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300">
+<img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/safety_gauges.png" width="300" alt="Safety gauge dashboard example">
+<img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300" alt="Sensor card dashboard example">
 
 ## Support the Project
 If you find this integration useful, consider supporting the original author:
