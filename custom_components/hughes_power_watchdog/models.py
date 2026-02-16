@@ -152,9 +152,13 @@ class PowerWatchdogManager:
 
             except asyncio.CancelledError:
                 _LOGGER.debug("Task cancelled, disconnecting...")
-                if self.client:
-                    await self.client.disconnect()
-                raise
+                try:
+                    if self.client:
+                        await self.client.disconnect()
+                except Exception as ex:
+                    _LOGGER.debug("Error during disconnect cleanup: %s", ex)
+                finally:
+                    raise
 
             except (BleakError, asyncio.TimeoutError) as ex:
                 _LOGGER.warning("Connection failed: %s. Retrying in 10 s…", ex)
