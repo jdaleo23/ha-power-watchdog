@@ -13,14 +13,17 @@ Packet layout
 
 DLReport (cmd 1) body contains one or two 34-byte *DLData* blocks:
 
-    Offset  Len  Field             Scale
-    ─────  ───  ────────────────  ───────
+    Offset  Len  Field             Scale     Notes
+    ─────  ───  ────────────────  ───────   ──────────────────────────────
      0      4   inputVoltage      / 10 000  → V
      4      4   current           / 10 000  → A
      8      4   power             / 10 000  → W
-    12      4   energy            / 10 000  → kWh
-    16      4   (reserved)
-    20      4   outputVoltage     / 10 000  → V
+    12      4   energy            / 10 000  → kWh  (resettable counter)
+    16      4   (reserved)        —         Unknown; not used
+    20      4   (reserved)        —         On WD_V6: mirrors energy counter.
+                                            Output voltage only present on
+                                            models with a voltage booster.
+                                            Disabled by default in HA.
     24      1   backlight
     25      1   neutralDetection
     26      1   boost flag        1 = boosting
@@ -268,16 +271,19 @@ class PowerWatchdogManager:
     def _parse_dl_data(body: bytes, offset: int) -> LineData:
         """Parse a single 34-byte DLData block."""
         o = offset
-        voltage_raw = struct.unpack_from(">i", body, o)[0]
-        current_raw = struct.unpack_from(">i", body, o + 4)[0]
-        power_raw = struct.unpack_from(">i", body, o + 8)[0]
-        energy_raw = struct.unpack_from(">i", body, o + 12)[0]
-        # o+16 … o+19 = reserved (temp1)
+        voltage_raw  = struct.unpack_from(">i", body, o)[0]
+        current_raw  = struct.unpack_from(">i", body, o + 4)[0]
+        power_raw    = struct.unpack_from(">i", body, o + 8)[0]
+        energy_raw   = struct.unpack_from(">i", body, o + 12)[0]
+        # o+16 … o+19 = reserved (unknown)
+        # o+20 … o+23 = reserved on surge-only models (mirrors energy on WD_V6).
+        #               May represent output voltage on voltage-booster variants.
+        #               Exposed as output_voltage but disabled by default in HA.
         output_v_raw = struct.unpack_from(">i", body, o + 20)[0]
-        boost = body[o + 26] == 1
-        freq_raw = struct.unpack_from(">i", body, o + 28)[0]
-        error_code = body[o + 32]
-        status = body[o + 33]
+        boost        = body[o + 26] == 1
+        freq_raw     = struct.unpack_from(">i", body, o + 28)[0]
+        error_code   = body[o + 32]
+        status       = body[o + 33]
 
         return LineData(
             voltage=round(voltage_raw / 10_000, 1),

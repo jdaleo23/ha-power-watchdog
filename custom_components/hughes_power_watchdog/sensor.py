@@ -1,7 +1,32 @@
 """Sensor platform for the Hughes Power Watchdog integration.
 
-Creates sensor entities for L1, L2 (50A models), and combined totals.
-L2 sensors will report *unavailable* on 30A single-line models.
+Sensor default visibility rules
+─────────────────────────────────────────────────────────────────────────────
+Model tier is determined at setup time from the raw BLE advertisement name
+stored as CONF_BLE_NAME (e.g. "WD_V6_4af6ee9d9d05") — NOT the user-supplied
+friendly name. Runtime data (has_l2) confirms this once packets arrive.
+
+  Sensor                 30A default   50A default   Unknown default
+  ─────────────────────  ───────────   ───────────   ───────────────
+  L1 Voltage             enabled       enabled       enabled
+  L1 Current             enabled       enabled       enabled
+  L1 Power               enabled       enabled       enabled
+  L1 Energy              enabled       enabled       enabled
+  L1 Frequency           enabled       enabled       enabled
+  L1 Output Voltage      disabled      disabled      disabled  *
+  L2 Voltage             disabled      enabled       enabled
+  L2 Current             disabled      enabled       enabled
+  L2 Power               disabled      enabled       enabled
+  L2 Energy              disabled      enabled       enabled
+  L2 Frequency           disabled      enabled       enabled
+  L2 Output Voltage      disabled      disabled      disabled  *
+  Total Power            enabled       enabled       enabled
+  Total Energy           enabled       enabled       enabled
+
+* Output Voltage (offset 20) is disabled for all models. On WD_V6 hardware
+  it was confirmed to mirror the energy counter rather than report a real
+  voltage. May be valid on voltage-booster variants — enable manually if
+  needed in Settings → Devices & Services.
 """
 
 from __future__ import annotations
@@ -25,7 +50,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_DEVICE_NAME, DOMAIN
+from .const import CONF_BLE_NAME, DOMAIN, detect_line_count
 from .models import PowerWatchdogManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,43 +64,107 @@ async def async_setup_entry(
     """Set up Power Watchdog sensor entities."""
     manager: PowerWatchdogManager = hass.data[DOMAIN][entry.entry_id]["manager"]
 
+    # Use the raw BLE advertisement name for model detection — NOT the
+    # user-supplied friendly name which won't match any known model format.
+    ble_name: str = entry.data.get(CONF_BLE_NAME, "")
+    line_count = detect_line_count(ble_name)
+
+    _LOGGER.debug(
+        "Setting up sensors — BLE name: '%s', detected line count: %s",
+        ble_name,
+        line_count,
+    )
+
+    # L2 sensors enabled for confirmed 50A models AND unknown devices.
+    # Unknown devices get everything enabled so the user can see all data
+    # and disable what doesn't apply to their hardware.
+    l2_enabled = line_count in ("dual", "unknown")
+
+    if line_count == "unknown":
+        _LOGGER.warning(
+            "BLE name '%s' was not recognised as a known Power Watchdog model. "
+            "All sensors will be enabled by default. Please open an issue at "
+            "https://github.com/jdaleo23/ha-power-watchdog with your device "
+            "name so it can be added to the compatibility list.",
+            ble_name,
+        )
+
     sensors: list[SensorEntity] = [
-        # ── L1 ──────────────────────────────────────────────────────────────
-        PowerWatchdogLineSensor(manager, "L1 Voltage", SensorDeviceClass.VOLTAGE,
-                               UnitOfElectricPotential.VOLT, "l1", "voltage"),
-        PowerWatchdogLineSensor(manager, "L1 Current", SensorDeviceClass.CURRENT,
-                               UnitOfElectricCurrent.AMPERE, "l1", "current"),
-        PowerWatchdogLineSensor(manager, "L1 Power", SensorDeviceClass.POWER,
-                               UnitOfPower.WATT, "l1", "power"),
-        PowerWatchdogLineSensor(manager, "L1 Energy", SensorDeviceClass.ENERGY,
-                               UnitOfEnergy.KILO_WATT_HOUR, "l1", "energy",
-                               state_class=SensorStateClass.TOTAL_INCREASING),
-        PowerWatchdogLineSensor(manager, "L1 Frequency", SensorDeviceClass.FREQUENCY,
-                               UnitOfFrequency.HERTZ, "l1", "frequency"),
-        PowerWatchdogLineSensor(manager, "L1 Output Voltage", SensorDeviceClass.VOLTAGE,
-                               UnitOfElectricPotential.VOLT, "l1", "output_voltage"),
+        # ── L1 — always enabled ──────────────────────────────────────────────
+        PowerWatchdogLineSensor(
+            manager, "L1 Voltage", SensorDeviceClass.VOLTAGE,
+            UnitOfElectricPotential.VOLT, "l1", "voltage",
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L1 Current", SensorDeviceClass.CURRENT,
+            UnitOfElectricCurrent.AMPERE, "l1", "current",
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L1 Power", SensorDeviceClass.POWER,
+            UnitOfPower.WATT, "l1", "power",
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L1 Energy", SensorDeviceClass.ENERGY,
+            UnitOfEnergy.KILO_WATT_HOUR, "l1", "energy",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L1 Frequency", SensorDeviceClass.FREQUENCY,
+            UnitOfFrequency.HERTZ, "l1", "frequency",
+        ),
 
-        # ── L2 (50A only — unavailable on 30A models) ──────────────────────
-        PowerWatchdogLineSensor(manager, "L2 Voltage", SensorDeviceClass.VOLTAGE,
-                               UnitOfElectricPotential.VOLT, "l2", "voltage"),
-        PowerWatchdogLineSensor(manager, "L2 Current", SensorDeviceClass.CURRENT,
-                               UnitOfElectricCurrent.AMPERE, "l2", "current"),
-        PowerWatchdogLineSensor(manager, "L2 Power", SensorDeviceClass.POWER,
-                               UnitOfPower.WATT, "l2", "power"),
-        PowerWatchdogLineSensor(manager, "L2 Energy", SensorDeviceClass.ENERGY,
-                               UnitOfEnergy.KILO_WATT_HOUR, "l2", "energy",
-                               state_class=SensorStateClass.TOTAL_INCREASING),
-        PowerWatchdogLineSensor(manager, "L2 Frequency", SensorDeviceClass.FREQUENCY,
-                               UnitOfFrequency.HERTZ, "l2", "frequency"),
-        PowerWatchdogLineSensor(manager, "L2 Output Voltage", SensorDeviceClass.VOLTAGE,
-                               UnitOfElectricPotential.VOLT, "l2", "output_voltage"),
+        # ── L1 Output Voltage — disabled for ALL models ──────────────────────
+        PowerWatchdogLineSensor(
+            manager, "L1 Output Voltage", SensorDeviceClass.VOLTAGE,
+            UnitOfElectricPotential.VOLT, "l1", "output_voltage",
+            enabled_by_default=False,
+        ),
 
-        # ── Totals ──────────────────────────────────────────────────────────
-        PowerWatchdogTotalSensor(manager, "Total Power", SensorDeviceClass.POWER,
-                                 UnitOfPower.WATT, "power"),
-        PowerWatchdogTotalSensor(manager, "Total Energy", SensorDeviceClass.ENERGY,
-                                 UnitOfEnergy.KILO_WATT_HOUR, "energy",
-                                 state_class=SensorStateClass.TOTAL_INCREASING),
+        # ── L2 — enabled for 50A and unknown, disabled for confirmed 30A ─────
+        PowerWatchdogLineSensor(
+            manager, "L2 Voltage", SensorDeviceClass.VOLTAGE,
+            UnitOfElectricPotential.VOLT, "l2", "voltage",
+            enabled_by_default=l2_enabled,
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L2 Current", SensorDeviceClass.CURRENT,
+            UnitOfElectricCurrent.AMPERE, "l2", "current",
+            enabled_by_default=l2_enabled,
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L2 Power", SensorDeviceClass.POWER,
+            UnitOfPower.WATT, "l2", "power",
+            enabled_by_default=l2_enabled,
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L2 Energy", SensorDeviceClass.ENERGY,
+            UnitOfEnergy.KILO_WATT_HOUR, "l2", "energy",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+            enabled_by_default=l2_enabled,
+        ),
+        PowerWatchdogLineSensor(
+            manager, "L2 Frequency", SensorDeviceClass.FREQUENCY,
+            UnitOfFrequency.HERTZ, "l2", "frequency",
+            enabled_by_default=l2_enabled,
+        ),
+
+        # ── L2 Output Voltage — disabled for ALL models ──────────────────────
+        PowerWatchdogLineSensor(
+            manager, "L2 Output Voltage", SensorDeviceClass.VOLTAGE,
+            UnitOfElectricPotential.VOLT, "l2", "output_voltage",
+            enabled_by_default=False,
+        ),
+
+        # ── Totals — always enabled ──────────────────────────────────────────
+        PowerWatchdogTotalSensor(
+            manager, "Total Power", SensorDeviceClass.POWER,
+            UnitOfPower.WATT, "power",
+        ),
+        PowerWatchdogTotalSensor(
+            manager, "Total Energy", SensorDeviceClass.ENERGY,
+            UnitOfEnergy.KILO_WATT_HOUR, "energy",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
     ]
 
     async_add_entities(sensors)
@@ -96,15 +185,17 @@ class PowerWatchdogLineSensor(SensorEntity):
         field: str,
         *,
         state_class: SensorStateClass = SensorStateClass.MEASUREMENT,
+        enabled_by_default: bool = True,
     ) -> None:
         self._manager = manager
-        self._line = line  # "l1" or "l2"
+        self._line = line
         self._field = field
         self._attr_name = f"{manager.name} {name_suffix}"
         self._attr_unique_id = f"{manager.address}_{line}_{field}"
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
+        self._attr_entity_registry_enabled_default = enabled_by_default
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, manager.address)},
             name=manager.name,
