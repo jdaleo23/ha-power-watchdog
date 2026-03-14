@@ -105,7 +105,7 @@ The integration uses your device's model number to automatically enable the sens
 | Total Energy | kWh | Combined L1 + L2 energy | ✅ | ✅ | ✅ |
 
 > If your model isn't listed above, all sensors except Output Voltage will be enabled by default. [Open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your device's BLE name so it can be added to the compatibility list.
- 
+
 > **Output Voltage** is disabled on all models — on tested hardware it was found to not report a real voltage reading. It may work on voltage-booster variants, so if you have one and can confirm it works, please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your model number.
 ## Known Issues / Troubleshooting
 
