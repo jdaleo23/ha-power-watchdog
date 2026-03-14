@@ -37,14 +37,17 @@ Gen 1 devices advertise as `PM{S|D}...` (19-character name):
 
 **50A** models report separate **L1** and **L2** sensors (one per AC line) plus combined **Total Power** and **Total Energy** sensors. The integration auto-detects which model is connected based on the data it receives.
 
+> **Note:** This integration has been developed and tested on a **WD_V6 (30A Gen 2)**. The 50A dual-line and Gen 1 models are implemented but have not been personally verified. If you have one of these and can confirm it works, please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) or start a [Discussion](https://github.com/jdaleo23/ha-power-watchdog/discussions)!
+
 ## Features
 
 * **Auto-Discovery:** Automatically finds nearby Power Watchdog devices via Home Assistant's Bluetooth integration.
 * **Local Push:** Data arrives in real-time over BLE notifications — no cloud or polling required.
 * **30A & 50A Support:** Single-line and dual-line models are both handled with the same protocol parser.
+* **Smart Sensor Defaults:** Sensors are automatically enabled or disabled based on your device's model number so your dashboard is clean from the start.
 * **Robust Protocol Handling:** A packet-reassembly buffer correctly handles BLE fragmentation and ignores non-telemetry frames (error reports, alarms), preventing stale or incorrect readings.
 * **Key Sensors (per line):**
-  * Voltage (V) — input and output
+  * Voltage (V) — input voltage
   * Current (A)
   * Power (W)
   * Energy Consumption (kWh)
@@ -78,29 +81,32 @@ Gen 1 devices advertise as `PM{S|D}...` (19-character name):
 1. Navigate to **Settings > Devices & Services**.
 2. Click **+ Add Integration**.
 3. Search for **Hughes Power Watchdog**.
-4. Select your device from the discovered list.
+4. Select your device from the discovered list and give it a name.
 
 ## Sensors
 
-### 30A Models (single line)
+The integration uses your device's model number to automatically enable the sensors that apply to your hardware. The table below shows what's on by default — any disabled sensor can be manually enabled in **Settings → Devices & Services → your device → disabled entities**.
 
-| Sensor | Unit | Description |
-|--------|------|-------------|
-| L1 Voltage | V | Input voltage |
-| L1 Current | A | Line current draw |
-| L1 Power | W | Active power |
-| L1 Energy | kWh | Cumulative energy (total increasing) |
-| L1 Frequency | Hz | Line frequency |
-| L1 Output Voltage | V | Voltage after regulation |
-| Total Power | W | Same as L1 Power |
-| Total Energy | kWh | Same as L1 Energy |
+| Sensor | Unit | Description | 30A | 50A | Unknown |
+|--------|------|-------------|:---:|:---:|:-------:|
+| L1 Voltage | V | Input voltage | ✅ | ✅ | ✅ |
+| L1 Current | A | Line current draw | ✅ | ✅ | ✅ |
+| L1 Power | W | Active power | ✅ | ✅ | ✅ |
+| L1 Energy | kWh | Cumulative energy | ✅ | ✅ | ✅ |
+| L1 Frequency | Hz | Line frequency | ✅ | ✅ | ✅ |
+| L1 Output Voltage | V | Voltage after regulation | ❌ | ❌ | ❌ |
+| L2 Voltage | V | Input voltage (line 2) | ❌ | ✅ | ✅ |
+| L2 Current | A | Line 2 current draw | ❌ | ✅ | ✅ |
+| L2 Power | W | Line 2 active power | ❌ | ✅ | ✅ |
+| L2 Energy | kWh | Line 2 cumulative energy | ❌ | ✅ | ✅ |
+| L2 Frequency | Hz | Line 2 frequency | ❌ | ✅ | ✅ |
+| L2 Output Voltage | V | Voltage after regulation (line 2) | ❌ | ❌ | ❌ |
+| Total Power | W | Combined L1 + L2 power | ✅ | ✅ | ✅ |
+| Total Energy | kWh | Combined L1 + L2 energy | ✅ | ✅ | ✅ |
 
-### 50A Models (dual line)
-
-All L1 sensors above, plus an identical set of L2 sensors. **Total Power** and **Total Energy** are the sum of both lines.
-
-> L2 sensors will show as *unavailable* until the first dual-line data frame arrives from the device. On 30A models they remain unavailable permanently and can be hidden in your dashboard.
-
+> If your model isn't listed above, all sensors except Output Voltage will be enabled by default. [Open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your device's BLE name so it can be added to the compatibility list.
+ 
+> **Output Voltage** is disabled on all models — on tested hardware it was found to not report a real voltage reading. It may work on voltage-booster variants, so if you have one and can confirm it works, please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your model number.
 ## Known Issues / Troubleshooting
 
 * **"No Devices Found":** Ensure your Power Watchdog is powered on and that the official phone app is completely closed.
