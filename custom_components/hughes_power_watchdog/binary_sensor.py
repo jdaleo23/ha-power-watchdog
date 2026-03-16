@@ -17,10 +17,10 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_BLE_NAME, DOMAIN, detect_line_count
+from .device_info import build_device_info
 from .models import PowerWatchdogManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,12 +63,7 @@ class PowerWatchdogFaultSensor(BinarySensorEntity):
         self._attr_name = f"{manager.name} {label} Fault Active"
         self._attr_unique_id = f"{manager.address}_{line}_fault_active"
         self._attr_entity_registry_enabled_default = enabled_by_default
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = build_device_info(manager)
         manager.register_sensor(self)
 
     @property

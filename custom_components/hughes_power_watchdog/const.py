@@ -59,17 +59,29 @@ ERROR_CODES: dict[int, tuple[str, str]] = {
     11: ("F2",  "Line 2 frequency error — frequency out of specification"),
 }
 
+
 def error_code_display(code: int | None) -> str:
-    """Return the short display code (e.g. 'E3') for a given error code int."""
+    """Return the short display code (e.g. 'E3', 'OK') for a given error code.
+
+    Falls back to the raw numeric string for any unmapped code rather than
+    fabricating an 'E{code}' label which could be misleading.
+    """
     if code is None:
         return "Unknown"
-    return ERROR_CODES.get(code, (f"E{code}", ""))[0]
+    entry = ERROR_CODES.get(code)
+    if entry is not None:
+        return entry[0]
+    return str(code)  # raw number for any unknown/future code
+
 
 def error_description(code: int | None) -> str:
     """Return the full description for a given error code int."""
     if code is None:
         return "Unknown"
-    return ERROR_CODES.get(code, ("", f"Unknown error code {code}"))[1]
+    entry = ERROR_CODES.get(code)
+    if entry is not None:
+        return entry[1]
+    return f"Unknown error code {code}"
 
 
 def detect_line_count(ble_name: str) -> str:

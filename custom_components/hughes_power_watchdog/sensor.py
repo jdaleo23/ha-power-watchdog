@@ -1,28 +1,4 @@
-"""Sensor platform for the Hughes Power Watchdog integration.
-
-Sensor default visibility rules
-─────────────────────────────────────────────────────────────────────────────
-  Sensor                 30A default   50A default   Unknown default
-  ─────────────────────  ───────────   ───────────   ───────────────
-  L1 Voltage             enabled       enabled       enabled
-  L1 Current             enabled       enabled       enabled
-  L1 Power               enabled       enabled       enabled
-  L1 Energy              enabled       enabled       enabled
-  L1 Frequency           enabled       enabled       enabled
-  L1 Output Voltage      disabled      disabled      disabled
-  L1 Error Code          enabled       enabled       enabled
-  L1 Error Description   enabled       enabled       enabled
-  L2 Voltage             disabled      enabled       enabled
-  L2 Current             disabled      enabled       enabled
-  L2 Power               disabled      enabled       enabled
-  L2 Energy              disabled      enabled       enabled
-  L2 Frequency           disabled      enabled       enabled
-  L2 Output Voltage      disabled      disabled      disabled
-  L2 Error Code          disabled      enabled       enabled
-  L2 Error Description   disabled      enabled       enabled
-  Total Power            enabled       enabled       enabled
-  Total Energy           enabled       enabled       enabled
-"""
+"""Sensor platform for the Hughes Power Watchdog integration."""
 
 from __future__ import annotations
 
@@ -42,7 +18,6 @@ from homeassistant.const import (
     UnitOfPower,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
@@ -52,6 +27,7 @@ from .const import (
     error_code_display,
     error_description,
 )
+from .device_info import build_device_info
 from .models import PowerWatchdogManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -174,19 +150,6 @@ async def async_setup_entry(
     async_add_entities(sensors)
 
 
-# ── Shared device info helper ────────────────────────────────────────────────
-
-def _device_info(manager: PowerWatchdogManager) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, manager.address)},
-        name=manager.name,
-        manufacturer="Hughes Autoformers",
-        model="Power Watchdog",
-    )
-
-
-# ── Sensor classes ───────────────────────────────────────────────────────────
-
 class PowerWatchdogLineSensor(SensorEntity):
     """Sensor bound to a single field on one AC line (L1 or L2)."""
 
@@ -213,7 +176,7 @@ class PowerWatchdogLineSensor(SensorEntity):
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
         self._attr_entity_registry_enabled_default = enabled_by_default
-        self._attr_device_info = _device_info(manager)
+        self._attr_device_info = build_device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -246,11 +209,10 @@ class PowerWatchdogErrorCodeSensor(SensorEntity):
     ) -> None:
         self._manager = manager
         self._line = line
-        label = line.upper()
-        self._attr_name = f"{manager.name} {label} Error Code"
+        self._attr_name = f"{manager.name} {line.upper()} Error Code"
         self._attr_unique_id = f"{manager.address}_{line}_error_code"
         self._attr_entity_registry_enabled_default = enabled_by_default
-        self._attr_device_info = _device_info(manager)
+        self._attr_device_info = build_device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -283,11 +245,10 @@ class PowerWatchdogErrorDescriptionSensor(SensorEntity):
     ) -> None:
         self._manager = manager
         self._line = line
-        label = line.upper()
-        self._attr_name = f"{manager.name} {label} Error Description"
+        self._attr_name = f"{manager.name} {line.upper()} Error Description"
         self._attr_unique_id = f"{manager.address}_{line}_error_description"
         self._attr_entity_registry_enabled_default = enabled_by_default
-        self._attr_device_info = _device_info(manager)
+        self._attr_device_info = build_device_info(manager)
         manager.register_sensor(self)
 
     @property
@@ -327,7 +288,7 @@ class PowerWatchdogTotalSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
-        self._attr_device_info = _device_info(manager)
+        self._attr_device_info = build_device_info(manager)
         manager.register_sensor(self)
 
     @property
