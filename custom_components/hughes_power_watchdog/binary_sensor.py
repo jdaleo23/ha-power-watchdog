@@ -1,8 +1,8 @@
 """Binary sensor platform for the Hughes Power Watchdog integration.
 
 Provides a Fault Active binary sensor per line (L1 / L2).
-  • ON  — an error code is active (E1–E9, F1–F2)
-  • OFF — no fault (error code == 0)
+  * ON  - an error code is active (E1-E9, F1-F2)
+  * OFF - no fault (error code == 0)
 
 Useful for automations, alerts, and dashboard badges.
 """
