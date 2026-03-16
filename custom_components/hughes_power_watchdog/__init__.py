@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from .const import CONF_DEVICE_NAME, DOMAIN
 from .models import PowerWatchdogManager
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

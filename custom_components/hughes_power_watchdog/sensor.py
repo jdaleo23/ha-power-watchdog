@@ -2,10 +2,6 @@
 
 Sensor default visibility rules
 ─────────────────────────────────────────────────────────────────────────────
-Model tier is determined at setup time from the raw BLE advertisement name
-stored as CONF_BLE_NAME (e.g. "WD_V6_4af6ee9d9d05") — NOT the user-supplied
-friendly name. Runtime data (has_l2) confirms this once packets arrive.
-
   Sensor                 30A default   50A default   Unknown default
   ─────────────────────  ───────────   ───────────   ───────────────
   L1 Voltage             enabled       enabled       enabled
@@ -13,20 +9,19 @@ friendly name. Runtime data (has_l2) confirms this once packets arrive.
   L1 Power               enabled       enabled       enabled
   L1 Energy              enabled       enabled       enabled
   L1 Frequency           enabled       enabled       enabled
-  L1 Output Voltage      disabled      disabled      disabled  *
+  L1 Output Voltage      disabled      disabled      disabled
+  L1 Error Code          enabled       enabled       enabled
+  L1 Error Description   enabled       enabled       enabled
   L2 Voltage             disabled      enabled       enabled
   L2 Current             disabled      enabled       enabled
   L2 Power               disabled      enabled       enabled
   L2 Energy              disabled      enabled       enabled
   L2 Frequency           disabled      enabled       enabled
-  L2 Output Voltage      disabled      disabled      disabled  *
+  L2 Output Voltage      disabled      disabled      disabled
+  L2 Error Code          disabled      enabled       enabled
+  L2 Error Description   disabled      enabled       enabled
   Total Power            enabled       enabled       enabled
   Total Energy           enabled       enabled       enabled
-
-* Output Voltage (offset 20) is disabled for all models. On WD_V6 hardware
-  it was confirmed to mirror the energy counter rather than report a real
-  voltage. May be valid on voltage-booster variants — enable manually if
-  needed in Settings → Devices & Services.
 """
 
 from __future__ import annotations
@@ -50,7 +45,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_BLE_NAME, DOMAIN, detect_line_count
+from .const import (
+    CONF_BLE_NAME,
+    DOMAIN,
+    detect_line_count,
+    error_code_display,
+    error_description,
+)
 from .models import PowerWatchdogManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,8 +65,6 @@ async def async_setup_entry(
     """Set up Power Watchdog sensor entities."""
     manager: PowerWatchdogManager = hass.data[DOMAIN][entry.entry_id]["manager"]
 
-    # Use the raw BLE advertisement name for model detection — NOT the
-    # user-supplied friendly name which won't match any known model format.
     ble_name: str = entry.data.get(CONF_BLE_NAME, "")
     line_count = detect_line_count(ble_name)
 
@@ -75,9 +74,6 @@ async def async_setup_entry(
         line_count,
     )
 
-    # L2 sensors enabled for confirmed 50A models AND unknown devices.
-    # Unknown devices get everything enabled so the user can see all data
-    # and disable what doesn't apply to their hardware.
     l2_enabled = line_count in ("dual", "unknown")
 
     if line_count == "unknown":
@@ -120,6 +116,10 @@ async def async_setup_entry(
             enabled_by_default=False,
         ),
 
+        # ── L1 Error sensors — always enabled ────────────────────────────────
+        PowerWatchdogErrorCodeSensor(manager, "l1"),
+        PowerWatchdogErrorDescriptionSensor(manager, "l1"),
+
         # ── L2 — enabled for 50A and unknown, disabled for confirmed 30A ─────
         PowerWatchdogLineSensor(
             manager, "L2 Voltage", SensorDeviceClass.VOLTAGE,
@@ -155,6 +155,10 @@ async def async_setup_entry(
             enabled_by_default=False,
         ),
 
+        # ── L2 Error sensors — follow L2 default ─────────────────────────────
+        PowerWatchdogErrorCodeSensor(manager, "l2", enabled_by_default=l2_enabled),
+        PowerWatchdogErrorDescriptionSensor(manager, "l2", enabled_by_default=l2_enabled),
+
         # ── Totals — always enabled ──────────────────────────────────────────
         PowerWatchdogTotalSensor(
             manager, "Total Power", SensorDeviceClass.POWER,
@@ -170,8 +174,21 @@ async def async_setup_entry(
     async_add_entities(sensors)
 
 
+# ── Shared device info helper ────────────────────────────────────────────────
+
+def _device_info(manager: PowerWatchdogManager) -> DeviceInfo:
+    return DeviceInfo(
+        identifiers={(DOMAIN, manager.address)},
+        name=manager.name,
+        manufacturer="Hughes Autoformers",
+        model="Power Watchdog",
+    )
+
+
+# ── Sensor classes ───────────────────────────────────────────────────────────
+
 class PowerWatchdogLineSensor(SensorEntity):
-    """Sensor bound to a single AC line (L1 or L2)."""
+    """Sensor bound to a single field on one AC line (L1 or L2)."""
 
     _attr_should_poll = False
 
@@ -196,17 +213,11 @@ class PowerWatchdogLineSensor(SensorEntity):
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
         self._attr_entity_registry_enabled_default = enabled_by_default
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = _device_info(manager)
         manager.register_sensor(self)
 
     @property
     def available(self) -> bool:
-        """L2 sensors are unavailable until 50A dual-line data arrives."""
         if self._line == "l2" and not self._manager.data.has_l2:
             return False
         line_data = getattr(self._manager.data, self._line, None)
@@ -214,11 +225,84 @@ class PowerWatchdogLineSensor(SensorEntity):
 
     @property
     def native_value(self) -> float | int | None:
-        """Return the current sensor value."""
         line_data = getattr(self._manager.data, self._line, None)
         if line_data is None:
             return None
         return getattr(line_data, self._field, None)
+
+
+class PowerWatchdogErrorCodeSensor(SensorEntity):
+    """Sensor reporting the short error code string (e.g. 'E3', 'OK')."""
+
+    _attr_should_poll = False
+    _attr_icon = "mdi:alert-circle-outline"
+
+    def __init__(
+        self,
+        manager: PowerWatchdogManager,
+        line: str,
+        *,
+        enabled_by_default: bool = True,
+    ) -> None:
+        self._manager = manager
+        self._line = line
+        label = line.upper()
+        self._attr_name = f"{manager.name} {label} Error Code"
+        self._attr_unique_id = f"{manager.address}_{line}_error_code"
+        self._attr_entity_registry_enabled_default = enabled_by_default
+        self._attr_device_info = _device_info(manager)
+        manager.register_sensor(self)
+
+    @property
+    def available(self) -> bool:
+        if self._line == "l2" and not self._manager.data.has_l2:
+            return False
+        line_data = getattr(self._manager.data, self._line, None)
+        return line_data is not None and line_data.error_code is not None
+
+    @property
+    def native_value(self) -> str | None:
+        line_data = getattr(self._manager.data, self._line, None)
+        if line_data is None:
+            return None
+        return error_code_display(line_data.error_code)
+
+
+class PowerWatchdogErrorDescriptionSensor(SensorEntity):
+    """Sensor reporting the full human-readable error description."""
+
+    _attr_should_poll = False
+    _attr_icon = "mdi:alert-circle-outline"
+
+    def __init__(
+        self,
+        manager: PowerWatchdogManager,
+        line: str,
+        *,
+        enabled_by_default: bool = True,
+    ) -> None:
+        self._manager = manager
+        self._line = line
+        label = line.upper()
+        self._attr_name = f"{manager.name} {label} Error Description"
+        self._attr_unique_id = f"{manager.address}_{line}_error_description"
+        self._attr_entity_registry_enabled_default = enabled_by_default
+        self._attr_device_info = _device_info(manager)
+        manager.register_sensor(self)
+
+    @property
+    def available(self) -> bool:
+        if self._line == "l2" and not self._manager.data.has_l2:
+            return False
+        line_data = getattr(self._manager.data, self._line, None)
+        return line_data is not None and line_data.error_code is not None
+
+    @property
+    def native_value(self) -> str | None:
+        line_data = getattr(self._manager.data, self._line, None)
+        if line_data is None:
+            return None
+        return error_description(line_data.error_code)
 
 
 class PowerWatchdogTotalSensor(SensorEntity):
@@ -243,17 +327,11 @@ class PowerWatchdogTotalSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = state_class
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+        self._attr_device_info = _device_info(manager)
         manager.register_sensor(self)
 
     @property
     def available(self) -> bool:
-        """Available as long as L1 data exists."""
         return (
             self._manager.data.l1 is not None
             and getattr(self._manager.data.l1, self._field) is not None
@@ -261,7 +339,6 @@ class PowerWatchdogTotalSensor(SensorEntity):
 
     @property
     def native_value(self) -> float | None:
-        """Return L1 + L2 (or just L1 for 30A models)."""
         l1_val = getattr(self._manager.data.l1, self._field, None)
         if l1_val is None:
             return None
