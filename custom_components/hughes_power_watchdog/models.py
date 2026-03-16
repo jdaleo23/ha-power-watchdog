@@ -29,7 +29,7 @@ DLReport (cmd 1) body contains one or two 34-byte *DLData* blocks:
     26      1   boost flag        1 = boosting
     27      1   temperature
     28      4   frequency         / 100     → Hz
-    32      1   error code        0-9
+    32      1   error code        0 = OK, 1-9 = E1-E9, 10-11 = F1-F2
     33      1   status
 
 30A models send a single 34-byte block.
@@ -107,8 +107,6 @@ class PowerWatchdogManager:
         self.sensors: list = []
         self.data = WatchdogData()
 
-        # Packet reassembly buffer — BLE notifications may deliver partial
-        # packets when the negotiated MTU is smaller than the full frame.
         self._rx_buffer = bytearray()
 
     def register_sensor(self, sensor) -> None:  # noqa: ANN001
@@ -149,7 +147,6 @@ class PowerWatchdogManager:
                     CHARACTERISTIC_UUID, HANDSHAKE_PAYLOAD, response=True
                 )
 
-                # Keep alive while connected
                 while self.client and self.client.is_connected:
                     await asyncio.sleep(5)
 
@@ -191,14 +188,9 @@ class PowerWatchdogManager:
             pass
 
     def _try_parse_packet(self) -> bool:
-        """Extract and dispatch one packet from the buffer.
-
-        Returns True if bytes were consumed (even on an invalid packet),
-        False when more data is needed.
-        """
+        """Extract and dispatch one packet from the buffer."""
         buf = self._rx_buffer
 
-        # Scan for the 4-byte identifier
         while len(buf) >= 4:
             if struct.unpack_from(">I", buf, 0)[0] == PACKET_IDENTIFIER:
                 break
@@ -217,7 +209,7 @@ class PowerWatchdogManager:
 
         total_len = HEADER_SIZE + data_len + TAIL_SIZE
         if len(buf) < total_len:
-            return False  # incomplete — wait for more data
+            return False
 
         body = bytes(buf[HEADER_SIZE : HEADER_SIZE + data_len])
         tail = struct.unpack_from(">H", buf, HEADER_SIZE + data_len)[0]
@@ -230,7 +222,6 @@ class PowerWatchdogManager:
             )
             return True
 
-        # Dispatch
         if cmd == CMD_DL_REPORT:
             self._parse_dl_report(body)
         elif cmd == CMD_ERROR_REPORT:
@@ -262,7 +253,6 @@ class PowerWatchdogManager:
             )
             return
 
-        # Push update to all registered sensor entities
         for sensor in self.sensors:
             if sensor.hass:
                 sensor.async_write_ha_state()
@@ -275,10 +265,6 @@ class PowerWatchdogManager:
         current_raw  = struct.unpack_from(">i", body, o + 4)[0]
         power_raw    = struct.unpack_from(">i", body, o + 8)[0]
         energy_raw   = struct.unpack_from(">i", body, o + 12)[0]
-        # o+16 … o+19 = reserved (unknown)
-        # o+20 … o+23 = reserved on surge-only models (mirrors energy on WD_V6).
-        #               May represent output voltage on voltage-booster variants.
-        #               Exposed as output_voltage but disabled by default in HA.
         output_v_raw = struct.unpack_from(">i", body, o + 20)[0]
         boost        = body[o + 26] == 1
         freq_raw     = struct.unpack_from(">i", body, o + 28)[0]
