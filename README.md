@@ -45,6 +45,7 @@ Gen 1 devices advertise as `PM{S|D}...` (19-character name):
 * **Local Push:** Data arrives in real-time over BLE notifications — no cloud or polling required.
 * **30A & 50A Support:** Single-line and dual-line models are both handled with the same protocol parser.
 * **Smart Sensor Defaults:** Sensors are automatically enabled or disabled based on your device's model number so your dashboard is clean from the start.
+* **Fault Detection:** Error code, error description, and a fault active binary sensor make it easy to get notified when something needs attention.
 * **Robust Protocol Handling:** A packet-reassembly buffer correctly handles BLE fragmentation and ignores non-telemetry frames (error reports, alarms), preventing stale or incorrect readings.
 * **Key Sensors (per line):**
   * Voltage (V) — input voltage
@@ -52,6 +53,9 @@ Gen 1 devices advertise as `PM{S|D}...` (19-character name):
   * Power (W)
   * Energy Consumption (kWh)
   * Frequency (Hz)
+  * Error Code — short code (e.g. `E3`, `OK`)
+  * Error Description — full description (e.g. `Line 1 overcurrent — amp draw exceeds rated limit`)
+  * Fault Active — binary on/off, useful for automations and alerts
 * **Totals (50A):** Combined Total Power and Total Energy across both lines.
 * **Controls:**
   * Reset Total Energy Button — reset the accumulated kWh counter directly from Home Assistant.
@@ -85,7 +89,7 @@ Gen 1 devices advertise as `PM{S|D}...` (19-character name):
 
 ## Sensors
 
-The integration uses your device's model number to automatically enable the sensors that apply to your hardware. The table below shows what's on by default — any disabled sensor can be manually enabled in **Settings → Devices & Services → your device → disabled entities**.
+The integration uses your device's model number to automatically enable the sensors that apply to your hardware. Any disabled sensor can be manually enabled in **Settings → Devices & Services → your device → disabled entities**.
 
 | Sensor | Unit | Description | 30A | 50A | Unknown |
 |--------|------|-------------|:---:|:---:|:-------:|
@@ -95,18 +99,42 @@ The integration uses your device's model number to automatically enable the sens
 | L1 Energy | kWh | Cumulative energy | ✅ | ✅ | ✅ |
 | L1 Frequency | Hz | Line frequency | ✅ | ✅ | ✅ |
 | L1 Output Voltage | V | Voltage after regulation | ❌ | ❌ | ❌ |
+| L1 Error Code | — | Short code e.g. `E3`, `OK` | ✅ | ✅ | ✅ |
+| L1 Error Description | — | Full error description | ✅ | ✅ | ✅ |
+| L1 Fault Active | — | Binary — on when fault present | ✅ | ✅ | ✅ |
 | L2 Voltage | V | Input voltage (line 2) | ❌ | ✅ | ✅ |
 | L2 Current | A | Line 2 current draw | ❌ | ✅ | ✅ |
 | L2 Power | W | Line 2 active power | ❌ | ✅ | ✅ |
 | L2 Energy | kWh | Line 2 cumulative energy | ❌ | ✅ | ✅ |
 | L2 Frequency | Hz | Line 2 frequency | ❌ | ✅ | ✅ |
 | L2 Output Voltage | V | Voltage after regulation (line 2) | ❌ | ❌ | ❌ |
+| L2 Error Code | — | Short code e.g. `E3`, `OK` | ❌ | ✅ | ✅ |
+| L2 Error Description | — | Full error description | ❌ | ✅ | ✅ |
+| L2 Fault Active | — | Binary — on when fault present | ❌ | ✅ | ✅ |
 | Total Power | W | Combined L1 + L2 power | ✅ | ✅ | ✅ |
 | Total Energy | kWh | Combined L1 + L2 energy | ✅ | ✅ | ✅ |
 
 > If your model isn't listed above, all sensors except Output Voltage will be enabled by default. [Open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your device's BLE name so it can be added to the compatibility list.
 
 > **Output Voltage** is disabled on all models — on tested hardware it was found to not report a real voltage reading. It may work on voltage-booster variants, so if you have one and can confirm it works, please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your model number.
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| OK | No error |
+| E1 | Line 1 voltage error — voltage above 132V or below 104V |
+| E2 | Line 2 voltage error — voltage above 132V or below 104V *(50A only)* |
+| E3 | Line 1 overcurrent — amp draw exceeds rated limit |
+| E4 | Line 2 overcurrent — amp draw exceeds rated limit *(50A only)* |
+| E5 | Line 1 neutral reversed — hot and neutral wires are reversed |
+| E6 | Line 2 neutral reversed — hot and neutral wires are reversed *(50A only)* |
+| E7 | Missing ground — no ground connection detected |
+| E8 | Missing neutral — no neutral circuit detected *(50A only)* |
+| E9 | Surge protection used up — surge board needs replacement |
+| F1 | Line 1 frequency error — frequency out of specification |
+| F2 | Line 2 frequency error — frequency out of specification *(50A only)* |
+
 ## Known Issues / Troubleshooting
 
 * **"No Devices Found":** Ensure your Power Watchdog is powered on and that the official phone app is completely closed.
