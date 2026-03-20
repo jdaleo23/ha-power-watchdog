@@ -5,10 +5,10 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CHARACTERISTIC_UUID, CMD_RESET_ENERGY, DOMAIN
+from .device_info import build_device_info
 
 
 async def async_setup_entry(
@@ -22,7 +22,10 @@ async def async_setup_entry(
 
 
 class WatchdogResetButton(ButtonEntity):
-    """Button that sends the energy-counter reset command."""
+    """Button that sends the energy-counter reset command.
+
+    Only available on Gen2 devices — Gen1 has no documented reset command.
+    """
 
     def __init__(self, manager) -> None:  # noqa: ANN001
         self._manager = manager
@@ -30,13 +33,14 @@ class WatchdogResetButton(ButtonEntity):
         self._attr_unique_id = f"{manager.address}_reset_energy"
         self._attr_icon = "mdi:counter"
         self._attr_device_class = "restart"
+        self._attr_device_info = build_device_info(manager)
 
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, manager.address)},
-            name=manager.name,
-            manufacturer="Hughes Autoformers",
-            model="Power Watchdog",
-        )
+    @property
+    def available(self) -> bool:
+        """Unavailable on Gen1 devices or when disconnected."""
+        if self._manager.generation == 1:
+            return False
+        return bool(self._manager.client and self._manager.client.is_connected)
 
     async def async_press(self) -> None:
         """Send the energy reset command to the device."""

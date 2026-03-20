@@ -12,6 +12,7 @@ from custom_components.hughes_power_watchdog.const import (
     DEVICE_NAME_PREFIXES,
     GEN1_PREFIX,
     GEN2_PREFIX,
+    detect_has_booster,
 )
 
 
@@ -100,3 +101,46 @@ class TestNonMatching:
     def test_none_safe(self):
         """Empty string returns False (caller should guard None)."""
         assert _matches("") is False
+
+
+# ── Booster detection ────────────────────────────────────────────────────────
+
+
+class TestBoosterDetection:
+    """Tests for detect_has_booster — identifies Gen2 voltage booster models."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "WD_E8_aabbccddeeff",
+            "WD_V8_aabbccddeeff",
+            "WD_E9_aabbccddeeff",
+            "WD_V9_aabbccddeeff",
+        ],
+    )
+    def test_booster_models(self, name: str):
+        """E8/V8 and E9/V9 are booster models."""
+        assert detect_has_booster(name) is True
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "WD_E5_aabbccddeeff",
+            "WD_V5_aabbccddeeff",
+            "WD_E6_aabbccddeeff",
+            "WD_V6_aabbccddeeff",
+            "WD_E7_aabbccddeeff",
+            "WD_V7_aabbccddeeff",
+        ],
+    )
+    def test_non_booster_models(self, name: str):
+        """E5/V5, E6/V6, E7/V7 are not booster models."""
+        assert detect_has_booster(name) is False
+
+    def test_gen1_not_booster(self):
+        """Gen1 devices are never booster models."""
+        assert detect_has_booster("PMS1234567890123456") is False
+
+    def test_empty_not_booster(self):
+        """Empty string returns False."""
+        assert detect_has_booster("") is False

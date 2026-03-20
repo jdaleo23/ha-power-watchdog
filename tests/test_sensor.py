@@ -36,7 +36,7 @@ def manager() -> PowerWatchdogManager:
 def manager_30a(manager: PowerWatchdogManager) -> PowerWatchdogManager:
     """Manager with a 30A (single-line) data update applied."""
     pkt = build_30a_packet(voltage=121.5, current=2.03, power=203.0, energy=500.0)
-    manager._notification_handler(None, bytearray(pkt))
+    manager._protocol.notification_handler(None, bytearray(pkt))
     return manager
 
 
@@ -47,7 +47,7 @@ def manager_50a(manager: PowerWatchdogManager) -> PowerWatchdogManager:
         l1_voltage=121.5, l1_current=2.03, l1_power=203.0, l1_energy=500.0,
         l2_voltage=122.7, l2_current=0.36, l2_power=7.0, l2_energy=100.0,
     )
-    manager._notification_handler(None, bytearray(pkt))
+    manager._protocol.notification_handler(None, bytearray(pkt))
     return manager
 
 
@@ -159,14 +159,18 @@ class TestLineSensorValue:
         assert sensor.native_value is None
 
     def test_all_line_fields(self, manager_50a: PowerWatchdogManager):
-        """Verify every field on both lines returns a non-None value."""
+        """Verify every non-booster field on both lines returns a non-None value."""
         for line in ("l1", "l2"):
-            for field in ("voltage", "current", "power", "energy",
-                          "output_voltage", "frequency"):
+            for field in ("voltage", "current", "power", "energy", "frequency"):
                 sensor = _make_line_sensor(manager_50a, line=line, field=field)
                 assert sensor.native_value is not None, (
                     f"{line}.{field} should not be None"
                 )
+
+    def test_output_voltage_none_non_booster(self, manager_50a: PowerWatchdogManager):
+        """Output voltage is None on non-booster models (default test fixture)."""
+        sensor = _make_line_sensor(manager_50a, line="l1", field="output_voltage")
+        assert sensor.native_value is None
 
 
 class TestLineSensorAttributes:
@@ -267,12 +271,12 @@ class TestEndToEnd:
 
         # Start with 30A
         pkt_30a = build_30a_packet(voltage=121.0)
-        manager._notification_handler(None, bytearray(pkt_30a))
+        manager._protocol.notification_handler(None, bytearray(pkt_30a))
         assert l2_sensor.available is False
 
         # Transition to 50A
         pkt_50a = build_50a_packet(l1_voltage=121.5, l2_voltage=122.7)
-        manager._notification_handler(None, bytearray(pkt_50a))
+        manager._protocol.notification_handler(None, bytearray(pkt_50a))
         assert l2_sensor.available is True
         assert l2_sensor.native_value == 122.7
 
@@ -282,7 +286,7 @@ class TestEndToEnd:
 
         for v in (120.0, 121.0, 122.0, 119.5):
             pkt = build_30a_packet(voltage=v)
-            manager._notification_handler(None, bytearray(pkt))
+            manager._protocol.notification_handler(None, bytearray(pkt))
             assert sensor.native_value == v
 
     def test_total_tracks_changes(self, manager: PowerWatchdogManager):
@@ -291,12 +295,12 @@ class TestEndToEnd:
 
         # 30A update
         pkt1 = build_30a_packet(power=200.0)
-        manager._notification_handler(None, bytearray(pkt1))
+        manager._protocol.notification_handler(None, bytearray(pkt1))
         assert total_sensor.native_value == 200.0
 
         # 50A update
         pkt2 = build_50a_packet(l1_power=200.0, l2_power=150.0)
-        manager._notification_handler(None, bytearray(pkt2))
+        manager._protocol.notification_handler(None, bytearray(pkt2))
         assert total_sensor.native_value == 350.0
 
     def test_sensor_registered_with_manager(self, manager: PowerWatchdogManager):
