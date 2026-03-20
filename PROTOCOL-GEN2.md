@@ -7,21 +7,23 @@ model code and `{serial}` is a 12-character lowercase hex string.
 
 ## Device Models
 
-| Type | Amperage | Line Configuration |
-|------|----------|--------------------|
-| E5   | 30A      | Single-line        |
-| E6   | 30A      | Single-line        |
-| V5   | 30A      | Single-line        |
-| V6   | 30A      | Single-line        |
-| E7   | 50A      | Dual-line (L1+L2)  |
-| E8   | 50A      | Dual-line (L1+L2)  |
-| E9   | 50A      | Dual-line (L1+L2)  |
-| V7   | 50A      | Dual-line (L1+L2)  |
-| V8   | 50A      | Dual-line (L1+L2)  |
-| V9   | 50A      | Dual-line (L1+L2)  |
+| Type | Amperage | Lines  | Voltage Booster |
+|------|----------|--------|-----------------|
+| E5   | 30A      | Single | No              |
+| V5   | 30A      | Single | No              |
+| E6   | 30A      | Single | No              |
+| V6   | 30A      | Single | No              |
+| E7   | 50A      | Dual   | No              |
+| V7   | 50A      | Dual   | No              |
+| E8   | 50A      | Dual   | Yes             |
+| V8   | 50A      | Dual   | Yes             |
+| E9   | 50A      | Dual   | Yes             |
+| V9   | 50A      | Dual   | Yes             |
 
-The second character of the type code determines the line configuration:
-`5` or `6` = 30A single-line, `7`, `8`, or `9` = 50A dual-line.
+The second character of the type code determines capabilities:
+- `5` or `6` = 30A single-line surge protector
+- `7` = 50A dual-line surge protector
+- `8` or `9` = 50A dual-line with voltage booster (Hughes Autoformer)
 
 ## GATT Service
 
@@ -117,15 +119,45 @@ All multi-byte integers are **big-endian signed 32-bit** (`int32`).
 - **Input Voltage**: Voltage at the power source (pedestal/shore power).
 - **Output Voltage**: Voltage after the Watchdog's regulation/protection.
   May differ from input voltage when the boost feature is active.
+  **Booster models only** (E8/V8, E9/V9) — see
+  [Model-Specific Fields](#model-specific-fields) below.
 - **Energy**: Cumulative kilowatt-hours since the device was last reset.
 - **Boost Flag**: Set to `1` when the device is actively boosting low
-  voltage (Hughes Autoformer feature on supported models).
+  voltage. **Booster models only** (E8/V8, E9/V9).
 - **Neutral Detection**: Indicates the state of neutral wire detection.
 - **Backlight**: Display backlight state on the physical device.
 - **Temperature 1** (offset 16): Reserved; not used in current firmware.
 - **Temperature** (offset 27): Device internal temperature reading.
-  **E8/V8 models only** — other models transmit `0` for this byte.
+  **Booster models only** (E8/V8, E9/V9) — non-booster models
+  transmit `0` for this byte.
 - **Status**: Device operational status byte.
+
+### Model-Specific Fields
+
+Not all Gen2 models support every field in the DLData block. The type
+code's second character determines the model family:
+
+- **E5/V5, E6/V6, E7/V7** ("Non-booster" / surge protector only):
+  - **Output Voltage** (offset 20): Not meaningful. The firmware
+    repurposes these bytes with the cumulative energy counter value,
+    causing the field to mirror the Energy field. Implementations
+    should suppress or ignore this field on non-booster models.
+  - **Boost Flag** (offset 26): Always `0`. Not applicable.
+  - **Temperature** (offset 27): Always `0`. Not applicable.
+
+- **E8/V8, E9/V9** ("Booster" / Hughes Autoformer models):
+  - **Output Voltage** (offset 20): Reports the actual output voltage
+    after boost regulation. May differ from input voltage when the
+    booster is active.
+  - **Boost Flag** (offset 26): `1` when the booster is actively
+    raising voltage, `0` otherwise.
+  - **Temperature** (offset 27): Device internal temperature in
+    degrees Celsius. Used for over-temperature protection (alarm
+    triggers at 74°C).
+
+Implementers should detect the model from the BLE name type code and
+suppress the Output Voltage, Boost, and Temperature fields for
+non-booster models (type digits `5`, `6`, `7`).
 
 ## Error Codes
 
@@ -147,8 +179,8 @@ fault condition for that AC line.
 | 10   | (Reserved)                | Not used. |
 | 11   | Line 1 Frequency Error    | AC frequency on Line 1 is outside the acceptable range. |
 | 12   | Line 2 Frequency Error    | AC frequency on Line 2 is outside the acceptable range. |
-| 13   | (Gen2 only)               | Additional error condition. Model-specific; reported on E8/V8 50A units. |
-| 14   | (Gen2 only)               | Additional error condition. Model-specific; reported on E6/V6, E8/V8, and E5/V5 units. |
+| 13   | Over Temperature          | Device internal temperature has exceeded the safe threshold (74°C). Booster models only (E8/V8, E9/V9). |
+| 14   | Boost Error               | Voltage booster malfunction. Reported on booster models (E8/V8, E9/V9) and select surge protector models (E5/V5, E6/V6). |
 
 ## ErrorReport (Command 2)
 

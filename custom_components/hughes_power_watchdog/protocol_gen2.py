@@ -29,6 +29,7 @@ from .const import (
     PACKET_IDENTIFIER,
     PACKET_TAIL,
     TAIL_SIZE,
+    detect_has_booster,
 )
 
 if TYPE_CHECKING:
@@ -47,6 +48,7 @@ class Gen2Protocol:
     def __init__(self, manager: PowerWatchdogManager) -> None:
         self._manager = manager
         self._rx_buffer = bytearray()
+        self._has_booster = detect_has_booster(manager.ble_name)
 
     def reset_state(self) -> None:
         """Clear protocol state for a new connection."""
@@ -130,11 +132,11 @@ class Gen2Protocol:
         data = self._manager.data
 
         if len(body) == DL_DATA_SIZE:
-            data.l1 = parse_dl_data(body, 0)
+            data.l1 = parse_dl_data(body, 0, self._has_booster)
             data.has_l2 = False
         elif len(body) == DL_DATA_SIZE * 2:
-            data.l1 = parse_dl_data(body, 0)
-            data.l2 = parse_dl_data(body, DL_DATA_SIZE)
+            data.l1 = parse_dl_data(body, 0, self._has_booster)
+            data.l2 = parse_dl_data(body, DL_DATA_SIZE, self._has_booster)
             data.has_l2 = True
         else:
             _LOGGER.warning(
@@ -146,8 +148,13 @@ class Gen2Protocol:
         self._manager.notify_sensors()
 
 
-def parse_dl_data(body: bytes, offset: int):
-    """Parse a single 34-byte DLData block (big-endian signed int32)."""
+def parse_dl_data(body: bytes, offset: int, has_booster: bool = False):
+    """Parse a single 34-byte DLData block (big-endian signed int32).
+
+    Non-booster models (E5/V5, E6/V6, E7/V7) repurpose the output-voltage
+    bytes with the energy counter, so those fields are set to None when
+    ``has_booster`` is False.
+    """
     from .models import LineData
 
     o = offset
@@ -155,18 +162,24 @@ def parse_dl_data(body: bytes, offset: int):
     current_raw  = struct.unpack_from(">i", body, o + 4)[0]
     power_raw    = struct.unpack_from(">i", body, o + 8)[0]
     energy_raw   = struct.unpack_from(">i", body, o + 12)[0]
-    output_v_raw = struct.unpack_from(">i", body, o + 20)[0]
-    boost        = body[o + 26] == 1
     freq_raw     = struct.unpack_from(">i", body, o + 28)[0]
     error_code   = body[o + 32]
     status       = body[o + 33]
+
+    if has_booster:
+        output_v_raw = struct.unpack_from(">i", body, o + 20)[0]
+        output_voltage = round(output_v_raw / 10_000, 1)
+        boost = body[o + 26] == 1
+    else:
+        output_voltage = None
+        boost = None
 
     return LineData(
         voltage=round(voltage_raw / 10_000, 1),
         current=round(current_raw / 10_000, 2),
         power=round(power_raw / 10_000, 1),
         energy=round(energy_raw / 10_000, 2),
-        output_voltage=round(output_v_raw / 10_000, 1),
+        output_voltage=output_voltage,
         frequency=round(freq_raw / 100, 1),
         error_code=error_code,
         status=status,

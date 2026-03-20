@@ -65,11 +65,17 @@ class TestParseDlData:
         result = parse_dl_data(body, 0)
         assert result.energy == 2645.05
 
-    def test_output_voltage_scaling(self):
-        """Output voltage raw int divided by 10 000 → volts."""
+    def test_output_voltage_scaling_booster(self):
+        """Output voltage raw int divided by 10 000 → volts (booster models)."""
         body = build_dl_data(output_voltage=122.0)
-        result = parse_dl_data(body, 0)
+        result = parse_dl_data(body, 0, has_booster=True)
         assert result.output_voltage == 122.0
+
+    def test_output_voltage_suppressed_non_booster(self):
+        """Output voltage is None on non-booster models."""
+        body = build_dl_data(output_voltage=122.0)
+        result = parse_dl_data(body, 0, has_booster=False)
+        assert result.output_voltage is None
 
     def test_frequency_scaling(self):
         """Frequency raw int divided by 100 → Hz."""
@@ -90,19 +96,25 @@ class TestParseDlData:
         assert result.status == 2
 
     def test_boost_true(self):
-        """Boost flag == 1 → True."""
+        """Boost flag == 1 → True (booster models)."""
         body = build_dl_data(boost=True)
-        result = parse_dl_data(body, 0)
+        result = parse_dl_data(body, 0, has_booster=True)
         assert result.boost is True
 
     def test_boost_false(self):
-        """Boost flag == 0 → False."""
+        """Boost flag == 0 → False (booster models)."""
         body = build_dl_data(boost=False)
-        result = parse_dl_data(body, 0)
+        result = parse_dl_data(body, 0, has_booster=True)
         assert result.boost is False
 
-    def test_all_fields_together(self):
-        """Verify all fields are parsed correctly in a single block."""
+    def test_boost_suppressed_non_booster(self):
+        """Boost is None on non-booster models."""
+        body = build_dl_data(boost=True)
+        result = parse_dl_data(body, 0, has_booster=False)
+        assert result.boost is None
+
+    def test_all_fields_together_booster(self):
+        """Verify all fields are parsed correctly on a booster model."""
         body = build_dl_data(
             voltage=120.1,
             current=15.5,
@@ -114,7 +126,7 @@ class TestParseDlData:
             status=1,
             boost=True,
         )
-        result = parse_dl_data(body, 0)
+        result = parse_dl_data(body, 0, has_booster=True)
         assert result.voltage == 120.1
         assert result.current == 15.5
         assert result.power == 1860.0
@@ -124,6 +136,30 @@ class TestParseDlData:
         assert result.error_code == 5
         assert result.status == 1
         assert result.boost is True
+
+    def test_all_fields_together_non_booster(self):
+        """Verify booster-specific fields are suppressed on non-booster models."""
+        body = build_dl_data(
+            voltage=120.1,
+            current=15.5,
+            power=1860.0,
+            energy=100.0,
+            output_voltage=121.0,
+            frequency=50.0,
+            error=5,
+            status=1,
+            boost=True,
+        )
+        result = parse_dl_data(body, 0, has_booster=False)
+        assert result.voltage == 120.1
+        assert result.current == 15.5
+        assert result.power == 1860.0
+        assert result.energy == 100.0
+        assert result.output_voltage is None
+        assert result.frequency == 50.0
+        assert result.error_code == 5
+        assert result.status == 1
+        assert result.boost is None
 
     def test_offset_into_larger_buffer(self):
         """Parsing with a non-zero offset reads the second DLData block."""
@@ -144,10 +180,11 @@ class TestParseDlData:
             energy=0.0, output_voltage=0.0, frequency=0.0,
             error=0, status=0,
         )
-        result = parse_dl_data(body, 0)
+        result = parse_dl_data(body, 0, has_booster=True)
         assert result.voltage == 0.0
         assert result.current == 0.0
         assert result.power == 0.0
+        assert result.output_voltage == 0.0
         assert result.frequency == 0.0
 
     def test_block_size(self):

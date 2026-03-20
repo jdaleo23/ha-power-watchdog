@@ -70,8 +70,8 @@ ERROR_CODES: dict[int, tuple[str, str]] = {
     9:  ("E9",  "Surge protection used up - surge board needs replacement"),
     11: ("F1",  "Line 1 frequency error - frequency out of specification"),
     12: ("F2",  "Line 2 frequency error - frequency out of specification"),
-    13: ("E13", "Gen2-specific error condition"),
-    14: ("E14", "Gen2-specific error condition"),
+    13: ("E13", "Over temperature - device shut down due to high internal temperature"),
+    14: ("E14", "Boost error - voltage booster malfunction"),
 }
 
 
@@ -97,6 +97,25 @@ def error_description(code: int | None) -> str:
     if entry is not None:
         return entry[1]
     return f"Unknown error code {code}"
+
+
+GEN2_BOOSTER_DIGITS = {"8", "9"}  # E8/V8, E9/V9 have voltage booster
+
+
+def detect_has_booster(ble_name: str) -> bool:
+    """Return True if the BLE name indicates a Gen2 booster model (E8/V8, E9/V9).
+
+    Non-booster models repurpose the output-voltage bytes with the
+    energy counter value, so sensors for Output Voltage and Boost
+    should only be enabled on booster models.
+    """
+    if ble_name.startswith(GEN2_PREFIX):
+        parts = ble_name.split("_")
+        if len(parts) >= 2:
+            type_token = parts[1]
+            if len(type_token) >= 2 and type_token[-1] in GEN2_BOOSTER_DIGITS:
+                return True
+    return False
 
 
 def detect_line_count(ble_name: str) -> str:

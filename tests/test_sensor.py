@@ -159,14 +159,18 @@ class TestLineSensorValue:
         assert sensor.native_value is None
 
     def test_all_line_fields(self, manager_50a: PowerWatchdogManager):
-        """Verify every field on both lines returns a non-None value."""
+        """Verify every non-booster field on both lines returns a non-None value."""
         for line in ("l1", "l2"):
-            for field in ("voltage", "current", "power", "energy",
-                          "output_voltage", "frequency"):
+            for field in ("voltage", "current", "power", "energy", "frequency"):
                 sensor = _make_line_sensor(manager_50a, line=line, field=field)
                 assert sensor.native_value is not None, (
                     f"{line}.{field} should not be None"
                 )
+
+    def test_output_voltage_none_non_booster(self, manager_50a: PowerWatchdogManager):
+        """Output voltage is None on non-booster models (default test fixture)."""
+        sensor = _make_line_sensor(manager_50a, line="l1", field="output_voltage")
+        assert sensor.native_value is None
 
 
 class TestLineSensorAttributes:
