@@ -6,6 +6,7 @@ and async_press behaviour.
 
 from __future__ import annotations
 
+import asyncio
 import struct
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -104,8 +105,7 @@ class TestResetEnergyPayload:
 class TestAsyncPress:
     """Verify async_press sends the correct payload."""
 
-    @pytest.mark.asyncio
-    async def test_sends_payload_when_connected(
+    def test_sends_payload_when_connected(
         self, manager: PowerWatchdogManager, button: WatchdogResetButton
     ):
         """async_press writes CMD_RESET_ENERGY to the characteristic."""
@@ -114,7 +114,7 @@ class TestAsyncPress:
         mock_client.write_gatt_char = AsyncMock()
         manager.client = mock_client
 
-        await button.async_press()
+        asyncio.run(button.async_press())
 
         mock_client.write_gatt_char.assert_called_once_with(
             CHARACTERISTIC_UUID,
@@ -122,8 +122,7 @@ class TestAsyncPress:
             response=True,
         )
 
-    @pytest.mark.asyncio
-    async def test_no_write_when_disconnected(
+    def test_no_write_when_disconnected(
         self, manager: PowerWatchdogManager, button: WatchdogResetButton
     ):
         """async_press does nothing when the client is disconnected."""
@@ -132,16 +131,14 @@ class TestAsyncPress:
         mock_client.write_gatt_char = AsyncMock()
         manager.client = mock_client
 
-        await button.async_press()
+        asyncio.run(button.async_press())
 
         mock_client.write_gatt_char.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_no_write_when_no_client(
+    def test_no_write_when_no_client(
         self, manager: PowerWatchdogManager, button: WatchdogResetButton
     ):
         """async_press does nothing when there is no BLE client."""
         manager.client = None
 
-        await button.async_press()
-        # Should not raise
+        asyncio.run(button.async_press())
