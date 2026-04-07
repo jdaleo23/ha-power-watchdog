@@ -23,6 +23,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     CONF_BLE_NAME,
     DOMAIN,
+    detect_has_booster,
     detect_line_count,
     error_code_display,
     error_description,
@@ -43,6 +44,7 @@ async def async_setup_entry(
 
     ble_name: str = entry.data.get(CONF_BLE_NAME, "")
     line_count = detect_line_count(ble_name)
+    has_booster = detect_has_booster(ble_name)
 
     _LOGGER.debug(
         "Setting up sensors — BLE name: '%s', detected line count: %s",
@@ -85,11 +87,11 @@ async def async_setup_entry(
             UnitOfFrequency.HERTZ, "l1", "frequency",
         ),
 
-        # ── L1 Output Voltage — disabled for ALL models ──────────────────────
+        # ── L1 Output Voltage — only meaningful on booster models (E8/V8, E9/V9)
         PowerWatchdogLineSensor(
             manager, "L1 Output Voltage", SensorDeviceClass.VOLTAGE,
             UnitOfElectricPotential.VOLT, "l1", "output_voltage",
-            enabled_by_default=False,
+            enabled_by_default=has_booster,
         ),
 
         # ── L1 Error sensors — always enabled ────────────────────────────────
@@ -124,11 +126,11 @@ async def async_setup_entry(
             enabled_by_default=l2_enabled,
         ),
 
-        # ── L2 Output Voltage — disabled for ALL models ──────────────────────
+        # ── L2 Output Voltage — only meaningful on booster models (E8/V8, E9/V9)
         PowerWatchdogLineSensor(
             manager, "L2 Output Voltage", SensorDeviceClass.VOLTAGE,
             UnitOfElectricPotential.VOLT, "l2", "output_voltage",
-            enabled_by_default=False,
+            enabled_by_default=has_booster and l2_enabled,
         ),
 
         # ── L2 Error sensors — follow L2 default ─────────────────────────────

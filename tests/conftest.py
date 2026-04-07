@@ -23,6 +23,8 @@ import pytest
 class _SensorEntityBase:
     """Minimal stand-in for homeassistant.components.sensor.SensorEntity."""
 
+    hass = None
+
     _attr_should_poll: bool = True
     _attr_name: str = ""
     _attr_unique_id: str = ""

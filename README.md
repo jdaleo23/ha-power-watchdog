@@ -91,31 +91,32 @@ Gen 1 devices advertise as `PM{S|D}...` (19-character name):
 
 The integration uses your device's model number to automatically enable the sensors that apply to your hardware. Any disabled sensor can be manually enabled in **Settings → Devices & Services → your device → disabled entities**.
 
-| Sensor | Unit | Description | 30A | 50A | Unknown |
-|--------|------|-------------|:---:|:---:|:-------:|
-| L1 Voltage | V | Input voltage | ✅ | ✅ | ✅ |
-| L1 Current | A | Line current draw | ✅ | ✅ | ✅ |
-| L1 Power | W | Active power | ✅ | ✅ | ✅ |
-| L1 Energy | kWh | Cumulative energy | ✅ | ✅ | ✅ |
-| L1 Frequency | Hz | Line frequency | ✅ | ✅ | ✅ |
-| L1 Output Voltage | V | Voltage after regulation | ❌ | ❌ | ❌ |
-| L1 Error Code | — | Short code e.g. `E3`, `OK` | ✅ | ✅ | ✅ |
-| L1 Error Description | — | Full error description | ✅ | ✅ | ✅ |
-| L1 Fault Active | — | Binary — on when fault present | ✅ | ✅ | ✅ |
-| L2 Voltage | V | Input voltage (line 2) | ❌ | ✅ | ✅ |
-| L2 Current | A | Line 2 current draw | ❌ | ✅ | ✅ |
-| L2 Power | W | Line 2 active power | ❌ | ✅ | ✅ |
-| L2 Energy | kWh | Line 2 cumulative energy | ❌ | ✅ | ✅ |
-| L2 Frequency | Hz | Line 2 frequency | ❌ | ✅ | ✅ |
-| L2 Output Voltage | V | Voltage after regulation (line 2) | ❌ | ❌ | ❌ |
-| L2 Error Code | — | Short code e.g. `E3`, `OK` | ❌ | ✅ | ✅ |
-| L2 Error Description | — | Full error description | ❌ | ✅ | ✅ |
-| L2 Fault Active | — | Binary — on when fault present | ❌ | ✅ | ✅ |
-| Total Power | W | Combined L1 + L2 power | ✅ | ✅ | ✅ |
-| Total Energy | kWh | Combined L1 + L2 energy | ✅ | ✅ | ✅ |
+| Sensor | Unit | Description | 30A | 50A | Booster | Unknown |
+|--------|------|-------------|:---:|:---:|:-------:|:-------:|
+| L1 Voltage | V | Input voltage | ✅ | ✅ | ✅ | ✅ |
+| L1 Current | A | Line current draw | ✅ | ✅ | ✅ | ✅ |
+| L1 Power | W | Active power | ✅ | ✅ | ✅ | ✅ |
+| L1 Energy | kWh | Cumulative energy | ✅ | ✅ | ✅ | ✅ |
+| L1 Frequency | Hz | Line frequency | ✅ | ✅ | ✅ | ✅ |
+| L1 Output Voltage | V | Voltage after regulation | ❌ | ❌ | ✅ | ❌ |
+| L1 Error Code | — | Short code e.g. `E3`, `OK` | ✅ | ✅ | ✅ | ✅ |
+| L1 Error Description | — | Full error description | ✅ | ✅ | ✅ | ✅ |
+| L1 Fault Active | — | Binary — on when fault present | ✅ | ✅ | ✅ | ✅ |
+| L2 Voltage | V | Input voltage (line 2) | ❌ | ✅ | ✅ | ✅ |
+| L2 Current | A | Line 2 current draw | ❌ | ✅ | ✅ | ✅ |
+| L2 Power | W | Line 2 active power | ❌ | ✅ | ✅ | ✅ |
+| L2 Energy | kWh | Line 2 cumulative energy | ❌ | ✅ | ✅ | ✅ |
+| L2 Frequency | Hz | Line 2 frequency | ❌ | ✅ | ✅ | ✅ |
+| L2 Output Voltage | V | Voltage after regulation (line 2) | ❌ | ❌ | ✅ | ❌ |
+| L2 Error Code | — | Short code e.g. `E3`, `OK` | ❌ | ✅ | ✅ | ✅ |
+| L2 Error Description | — | Full error description | ❌ | ✅ | ✅ | ✅ |
+| L2 Fault Active | — | Binary — on when fault present | ❌ | ✅ | ✅ | ✅ |
+| Total Power | W | Combined L1 + L2 power | ✅ | ✅ | ✅ | ✅ |
+| Total Energy | kWh | Combined L1 + L2 energy | ✅ | ✅ | ✅ | ✅ |
 
+> **Booster models** are Gen2 devices with voltage-boost capability (E8/V8, E9/V9). On these models, Output Voltage reports the regulated voltage after boost. Non-booster Gen2 models (E5/V5, E6/V6, E7/V7) repurpose the output voltage bytes for the energy counter in firmware, so Output Voltage is suppressed and disabled by default on those devices.
+>
 > If your model isn't listed above, all sensors except Output Voltage will be enabled by default. [Open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your device's BLE name so it can be added to the compatibility list.
-> **Output Voltage** is disabled on all models — on tested hardware it was found to not report a real voltage reading. It may work on voltage-booster variants, so if you have one and can confirm it works, please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) with your model number.
 
 ## Error Codes
 

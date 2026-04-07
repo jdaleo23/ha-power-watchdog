@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_DEVICE_NAME, DOMAIN
+from .const import CONF_BLE_NAME, CONF_DEVICE_NAME, DOMAIN
 from .models import PowerWatchdogManager
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
@@ -21,8 +21,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the integration from a config entry."""
     address = entry.data[CONF_ADDRESS]
     name = entry.data[CONF_DEVICE_NAME]
+    ble_name = entry.data.get(CONF_BLE_NAME, "")
 
-    manager = PowerWatchdogManager(hass, address, name)
+    manager = PowerWatchdogManager(hass, address, name, ble_name=ble_name)
 
     task = entry.async_create_background_task(
         hass, manager.connect_loop(), "power_watchdog_loop"
