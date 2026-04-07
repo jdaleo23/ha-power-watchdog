@@ -34,6 +34,7 @@ class WatchdogResetButton(ButtonEntity):
         self._attr_icon = "mdi:counter"
         self._attr_device_class = "restart"
         self._attr_device_info = build_device_info(manager)
+        manager.register_sensor(self)
 
     @property
     def available(self) -> bool:
