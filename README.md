@@ -122,18 +122,20 @@ The integration uses your device's model number to automatically enable the sens
 
 | Code | Description |
 |------|-------------|
-| OK | No error |
-| E1 | Line 1 voltage error — voltage above 132V or below 104V |
-| E2 | Line 2 voltage error — voltage above 132V or below 104V *(50A only)* |
-| E3 | Line 1 overcurrent — amp draw exceeds rated limit |
-| E4 | Line 2 overcurrent — amp draw exceeds rated limit *(50A only)* |
-| E5 | Line 1 neutral reversed — hot and neutral wires are reversed |
-| E6 | Line 2 neutral reversed — hot and neutral wires are reversed *(50A only)* |
-| E7 | Missing ground — no ground connection detected |
-| E8 | Missing neutral — no neutral circuit detected |
-| E9 | Surge protection used up — surge board needs replacement |
-| F1 | Line 1 frequency error — frequency out of specification |
-| F2 | Line 2 frequency error — frequency out of specification *(50A only)* |
+| `OK` | No error |
+| `E1` | Line 1 voltage error — voltage above 132V or below 104V |
+| `E2` | Line 2 voltage error — voltage above 132V or below 104V *(50A only)* |
+| `E3` | Line 1 overcurrent — amp draw exceeds rated limit |
+| `E4` | Line 2 overcurrent — amp draw exceeds rated limit *(50A only)* |
+| `E5` | Line 1 neutral reversed — hot and neutral wires are reversed |
+| `E6` | Line 2 neutral reversed — hot and neutral wires are reversed *(50A only)* |
+| `E7` | Missing ground — no ground connection detected |
+| `E8` | Missing neutral — no neutral circuit detected |
+| `E9` | Surge protection used up — surge board needs replacement |
+| `E13` | Over temperature — device shut down due to high internal temperature (Booster models only) |
+| `E14` | Boost error — voltage booster malfunction |
+| `F1` | Line 1 frequency error — frequency out of specification |
+| `F2` | Line 2 frequency error — frequency out of specification *(50A only)* |
 
 ## Known Issues / Troubleshooting
 
