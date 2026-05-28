@@ -1,6 +1,8 @@
 [![Release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog?style=for-the-badge)](https://github.com/jdaleo23/ha-power-watchdog/releases)
 [![HACS Badge](https://img.shields.io/badge/HACS-default-blue.svg?style=for-the-badge)](https://github.com/hacs/integration)
 ![Compatibility](https://img.shields.io/badge/compatibility-30A%20%26%2050A-blue?style=for-the-badge)
+![Downloads](https://img.shields.io/github/downloads/jdaleo23/ha-power-watchdog/total?style=for-the-badge)
+![Latest Downloads](https://img.shields.io/github/downloads/jdaleo23/ha-power-watchdog/latest/total?style=for-the-badge)
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-red.svg?style=for-the-badge)](https://paypal.me/jordandaleo)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy_Me_A_☕-red?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=grey)](https://ko-fi.com/jdaleo23)
