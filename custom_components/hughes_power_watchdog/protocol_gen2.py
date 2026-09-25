@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+_IDENTIFIER_BYTES = struct.pack(">I", PACKET_IDENTIFIER)
+
 
 class Gen2Protocol:
     """Gen2 framed binary protocol handler."""
@@ -82,10 +84,17 @@ class Gen2Protocol:
         """Extract and dispatch one packet from the buffer."""
         buf = self._rx_buffer
 
-        while len(buf) >= 4:
-            if struct.unpack_from(">I", buf, 0)[0] == PACKET_IDENTIFIER:
-                break
-            del buf[0]
+        idx = buf.find(_IDENTIFIER_BYTES)
+        if idx == -1:
+            # No identifier found; keep only the trailing bytes that could be
+            # the start of one split across the next notification.
+            tail_len = min(len(buf), len(_IDENTIFIER_BYTES) - 1)
+            if len(buf) > tail_len:
+                del buf[: len(buf) - tail_len]
+            return False
+
+        if idx > 0:
+            del buf[:idx]
 
         if len(buf) < HEADER_SIZE:
             return False

@@ -3,18 +3,22 @@ from __future__ import annotations
 
 from typing import Any
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.redact import async_redact_data
 
 from .const import DOMAIN
+
+TO_REDACT = {CONF_ADDRESS}
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     manager = hass.data[DOMAIN][entry.entry_id]["manager"]
-    
+
     # This dictionary is what will be inside the downloaded file
-    return {
+    diagnostics = {
         "entry": {
             "title": entry.title,
             "version": entry.version,
@@ -48,3 +52,5 @@ async def async_get_config_entry_diagnostics(
             } if manager.data.has_l2 else None,
         }
     }
+
+    return async_redact_data(diagnostics, TO_REDACT)

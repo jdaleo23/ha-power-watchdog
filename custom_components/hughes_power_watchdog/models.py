@@ -81,6 +81,11 @@ class PowerWatchdogManager:
         """Device generation (1 or 2)."""
         return self._protocol.generation
 
+    @property
+    def is_connected(self) -> bool:
+        """Return True if there is an active BLE connection."""
+        return bool(self.client and self.client.is_connected)
+
     def _init_protocol(self):  # noqa: ANN202
         """Create the appropriate protocol handler based on BLE name."""
         if self.ble_name.startswith(GEN1_PREFIX):
@@ -147,8 +152,8 @@ class PowerWatchdogManager:
             except (BleakError, asyncio.TimeoutError) as ex:
                 _LOGGER.warning("Connection failed: %s. Retrying in 10 s…", ex)
                 await asyncio.sleep(10)
-            except Exception as ex:  # noqa: BLE001
-                _LOGGER.error("Unexpected error: %s", ex)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error in Power Watchdog connection loop")
                 await asyncio.sleep(30)
 
     def _on_disconnected(self, _client) -> None:  # noqa: ANN001

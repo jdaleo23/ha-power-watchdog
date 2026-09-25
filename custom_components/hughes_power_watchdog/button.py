@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CHARACTERISTIC_UUID, CMD_RESET_ENERGY, DOMAIN
@@ -41,16 +42,22 @@ class WatchdogResetButton(ButtonEntity):
         """Unavailable on Gen1 devices or when disconnected."""
         if self._manager.generation == 1:
             return False
-        return bool(self._manager.client and self._manager.client.is_connected)
+        return self._manager.is_connected
 
     async def async_press(self) -> None:
         """Send the energy reset command to the device."""
         if self._manager.generation == 1:
-            return
-        if self._manager.client and self._manager.client.is_connected:
-            payload = bytes.fromhex(CMD_RESET_ENERGY)
-            await self._manager.client.write_gatt_char(
-                CHARACTERISTIC_UUID,
-                payload,
-                response=True,
+            raise HomeAssistantError(
+                "Resetting the energy counter is not supported on Gen1 "
+                "Power Watchdog devices"
             )
+        if not self._manager.is_connected:
+            raise HomeAssistantError(
+                f"{self._manager.name} is not connected — cannot reset energy"
+            )
+        payload = bytes.fromhex(CMD_RESET_ENERGY)
+        await self._manager.client.write_gatt_char(
+            CHARACTERISTIC_UUID,
+            payload,
+            response=True,
+        )

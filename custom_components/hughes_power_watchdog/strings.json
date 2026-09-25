@@ -17,11 +17,6 @@
         }
       }
     },
-    "error": {
-      "no_devices_found": "No Power Watchdog devices found nearby.",
-      "cannot_connect": "Failed to connect. Check range and phone app connection.",
-      "unknown": "An unexpected error occurred."
-    },
     "abort": {
       "already_configured": "Device is already configured.",
       "no_devices_found": "No Power Watchdog devices were found nearby."

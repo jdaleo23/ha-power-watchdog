@@ -27,9 +27,11 @@ from custom_components.hughes_power_watchdog.sensor import (
 
 @pytest.fixture()
 def manager() -> PowerWatchdogManager:
-    """Fresh manager with no data yet."""
+    """Fresh manager with no data yet, with an active (connected) BLE client."""
     hass = MagicMock()
-    return PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "Test Watchdog")
+    mgr = PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "Test Watchdog")
+    mgr.client = MagicMock(is_connected=True)
+    return mgr
 
 
 @pytest.fixture()
@@ -113,6 +115,39 @@ class TestLineSensorAvailability:
         """L1 sensor is available on a 50A model."""
         sensor = _make_line_sensor(manager_50a, line="l1", field="voltage")
         assert sensor.available is True
+
+
+class TestLineSensorConnectionAvailability:
+    """Sensors must go unavailable when the BLE connection drops, even if
+    they previously received valid data."""
+
+    def test_l1_unavailable_when_disconnected(
+        self, manager_30a: PowerWatchdogManager
+    ):
+        """L1 sensor with prior data goes unavailable once disconnected."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="voltage")
+        assert sensor.available is True
+
+        manager_30a.client.is_connected = False
+        assert sensor.available is False
+
+    def test_l1_unavailable_with_no_client(self, manager_30a: PowerWatchdogManager):
+        """L1 sensor with prior data goes unavailable if the client is gone."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="voltage")
+        manager_30a.client = None
+        assert sensor.available is False
+
+    def test_l1_available_again_after_reconnect(
+        self, manager_30a: PowerWatchdogManager
+    ):
+        """Sensor becomes available again once reconnected, data intact."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="voltage")
+        manager_30a.client.is_connected = False
+        assert sensor.available is False
+
+        manager_30a.client.is_connected = True
+        assert sensor.available is True
+        assert sensor.native_value == 121.5
 
 
 class TestLineSensorValue:
@@ -212,6 +247,14 @@ class TestTotalSensorAvailability:
         """Total sensor is available after a 50A update."""
         sensor = _make_total_sensor(manager_50a, field="power")
         assert sensor.available is True
+
+    def test_unavailable_when_disconnected(self, manager_30a: PowerWatchdogManager):
+        """Total sensor goes unavailable when the BLE connection drops."""
+        sensor = _make_total_sensor(manager_30a, field="power")
+        assert sensor.available is True
+
+        manager_30a.client.is_connected = False
+        assert sensor.available is False
 
 
 class TestTotalSensorValue:
