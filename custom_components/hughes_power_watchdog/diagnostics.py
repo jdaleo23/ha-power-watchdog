@@ -17,7 +17,11 @@ TO_REDACT = {CONF_ADDRESS, CONF_BLE_NAME}
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
-    """Return diagnostics for a config entry."""
+    """Return entry, connection, and latest telemetry diagnostics.
+
+    Redact address and raw BLE name fields in the returned data. The L2
+    telemetry is None unless the manager has detected a second line.
+    """
     manager = hass.data[DOMAIN][entry.entry_id]["manager"]
 
     # This dictionary is what will be inside the downloaded file

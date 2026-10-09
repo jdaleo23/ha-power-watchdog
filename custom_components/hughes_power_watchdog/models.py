@@ -120,7 +120,14 @@ class PowerWatchdogManager:
         self._protocol.reset_state()
 
     async def connect_loop(self) -> None:
-        """Maintain a persistent BLE connection with automatic retry."""
+        """Maintain a persistent BLE connection with automatic retry.
+
+        Clear cached readings on each connection and notify sensors after
+        subscribing. Retry BLE errors and timeouts after 10 seconds, and
+        other exceptions after 30 seconds. CancelledError propagates;
+        cancellation outside an error retry delay also attempts to disconnect,
+        suppressing errors from disconnect cleanup.
+        """
         while True:
             try:
                 _LOGGER.debug("Connecting to Power Watchdog %s", self.address)
@@ -171,5 +178,6 @@ class PowerWatchdogManager:
                 await asyncio.sleep(30)
 
     def _on_disconnected(self, _client) -> None:  # noqa: ANN001
+        """Refresh registered entities on BLE disconnect to update availability."""
         _LOGGER.debug("Disconnected from Power Watchdog")
         self.notify_sensors()

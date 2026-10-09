@@ -45,7 +45,11 @@ class WatchdogResetButton(ButtonEntity):
         return self._manager.is_connected
 
     async def async_press(self) -> None:
-        """Send the energy reset command to the device."""
+        """Send the energy reset command to the device.
+
+        Raise HomeAssistantError for Gen1 devices or when disconnected.
+        Errors from the BLE write propagate to the caller.
+        """
         if self._manager.generation == 1:
             raise HomeAssistantError(
                 "Resetting the energy counter is not supported on Gen1 "

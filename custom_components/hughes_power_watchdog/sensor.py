@@ -183,6 +183,10 @@ class PowerWatchdogLineSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with a non-None reading for this field.
+
+        L2 also requires a detected second line.
+        """
         if not self._manager.is_connected:
             return False
         if self._line == "l2" and not self._manager.data.has_l2:
@@ -221,6 +225,10 @@ class PowerWatchdogErrorCodeSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with an error code for this line.
+
+        L2 also requires a detected second line; zero is a valid error code.
+        """
         if not self._manager.is_connected:
             return False
         if self._line == "l2" and not self._manager.data.has_l2:
@@ -259,6 +267,10 @@ class PowerWatchdogErrorDescriptionSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with an error code for this line.
+
+        L2 also requires a detected second line; zero is a valid error code.
+        """
         if not self._manager.is_connected:
             return False
         if self._line == "l2" and not self._manager.data.has_l2:
@@ -301,6 +313,11 @@ class PowerWatchdogTotalSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with readings for every required line.
+
+        Require this field on L1 and, when a second line is detected, L2
+        so a partial total is not published after reconnecting.
+        """
         if not self._manager.is_connected:
             return False
         data = self._manager.data
