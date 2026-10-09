@@ -47,6 +47,34 @@ class _ButtonEntityBase:
     _attr_device_info = None
 
 
+class _BinarySensorEntityBase:
+    """Minimal stand-in for homeassistant.components.binary_sensor.BinarySensorEntity."""
+
+    hass = None
+
+    _attr_should_poll: bool = True
+    _attr_name: str = ""
+    _attr_unique_id: str = ""
+    _attr_device_class = None
+    _attr_device_info = None
+
+    def async_write_ha_state(self) -> None:  # noqa: ANN101
+        pass
+
+
+def _fake_async_redact_data(data, to_redact):  # noqa: ANN001, ANN201
+    """Minimal stand-in for homeassistant.helpers.redact.async_redact_data."""
+    if isinstance(data, dict):
+        return {
+            key: "**REDACTED**" if key in to_redact
+            else _fake_async_redact_data(value, to_redact)
+            for key, value in data.items()
+        }
+    if isinstance(data, list):
+        return [_fake_async_redact_data(item, to_redact) for item in data]
+    return data
+
+
 def _install_mocks() -> None:
     """Populate sys.modules with mocks for all HA / BLE dependencies."""
     module_names = [
@@ -56,11 +84,14 @@ def _install_mocks() -> None:
         "homeassistant.const",
         "homeassistant.components",
         "homeassistant.components.bluetooth",
+        "homeassistant.components.binary_sensor",
         "homeassistant.components.sensor",
         "homeassistant.components.button",
+        "homeassistant.exceptions",
         "homeassistant.helpers",
         "homeassistant.helpers.entity",
         "homeassistant.helpers.entity_platform",
+        "homeassistant.helpers.redact",
         "homeassistant.helpers.selector",
         "bleak",
         "bleak_retry_connector",
@@ -81,6 +112,10 @@ def _install_mocks() -> None:
     button_mod = sys.modules["homeassistant.components.button"]
     button_mod.ButtonEntity = _ButtonEntityBase
 
+    binary_sensor_mod = sys.modules["homeassistant.components.binary_sensor"]
+    binary_sensor_mod.BinarySensorEntity = _BinarySensorEntityBase
+    binary_sensor_mod.BinarySensorDeviceClass = MagicMock()
+
     # ConfigEntry used as type hint and base class argument in config_flow
     sys.modules["homeassistant.config_entries"].ConfigEntry = MagicMock
     sys.modules["homeassistant.config_entries"].ConfigFlow = type(
@@ -91,6 +126,17 @@ def _install_mocks() -> None:
     const_mod = sys.modules["homeassistant.const"]
     const_mod.CONF_ADDRESS = "address"
     const_mod.Platform = MagicMock()
+
+    # HomeAssistantError must be a real exception class so tests can
+    # assert on it with pytest.raises()
+    sys.modules["homeassistant.exceptions"].HomeAssistantError = type(
+        "HomeAssistantError", (Exception,), {}
+    )
+
+    # async_redact_data must actually redact matching keys
+    sys.modules["homeassistant.helpers.redact"].async_redact_data = (
+        _fake_async_redact_data
+    )
 
     # DeviceInfo must accept keyword arguments
     sys.modules["homeassistant.helpers.entity"].DeviceInfo = lambda **kw: kw

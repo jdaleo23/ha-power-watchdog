@@ -40,8 +40,6 @@ class PowerWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Handle the initial step when the user adds the integration manually."""
-        errors: dict[str, str] = {}
-
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
             await self.async_set_unique_id(address, raise_on_progress=False)
@@ -105,7 +103,6 @@ class PowerWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=self.add_suggested_values_to_schema(
                 data_schema, user_input
             ),
-            errors=errors,
         )
 
     # ── Bluetooth auto-discovery ──────────────────────────────────────────────

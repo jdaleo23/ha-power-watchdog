@@ -293,6 +293,37 @@ class TestPacketReassembly:
 
         assert len(manager._protocol._rx_buffer) == 0
 
+    def test_pure_garbage_trimmed_to_tail(self, manager: PowerWatchdogManager):
+        """Bytes with no identifier anywhere are trimmed to a short tail
+        (long enough to catch an identifier split across notifications)."""
+        garbage = bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88])
+        manager._protocol.notification_handler(None, bytearray(garbage))
+
+        assert manager.data.l1.voltage is None
+        assert bytes(manager._protocol._rx_buffer) == garbage[-3:]
+
+    def test_short_garbage_kept_intact(self, manager: PowerWatchdogManager):
+        """A buffer shorter than the identifier is kept as-is, not trimmed."""
+        garbage = bytes([0xAA, 0xBB])
+        manager._protocol.notification_handler(None, bytearray(garbage))
+
+        assert bytes(manager._protocol._rx_buffer) == garbage
+
+    def test_identifier_split_across_notifications(
+        self, manager: PowerWatchdogManager
+    ):
+        """The 4-byte identifier itself split across two notifications is
+        still recognised once fully received."""
+        pkt = build_30a_packet(voltage=123.4)
+        first, second = bytearray(pkt[:2]), bytearray(pkt[2:])
+
+        manager._protocol.notification_handler(None, first)
+        assert len(manager._protocol._rx_buffer) == 2
+        assert manager.data.l1.voltage is None
+
+        manager._protocol.notification_handler(None, second)
+        assert manager.data.l1.voltage == 123.4
+
 
 # ── Command dispatch tests ───────────────────────────────────────────────────
 

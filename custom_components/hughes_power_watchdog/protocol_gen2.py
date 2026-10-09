@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+_IDENTIFIER_BYTES = struct.pack(">I", PACKET_IDENTIFIER)
+
 
 class Gen2Protocol:
     """Gen2 framed binary protocol handler."""
@@ -79,13 +81,27 @@ class Gen2Protocol:
     # ── Packet parsing ──────────────────────────────────────────────────────
 
     def _try_parse_packet(self) -> bool:
-        """Extract and dispatch one packet from the buffer."""
+        """Extract and dispatch one packet from the receive buffer when possible.
+
+        Return True to continue parsing after consuming a packet or skipping
+        an invalid length; this does not imply valid telemetry was received.
+        Return False when more bytes are needed, retaining incomplete packets
+        or up to three trailing bytes that may begin a split identifier.
+        Discard leading noise and packets with invalid tails.
+        """
         buf = self._rx_buffer
 
-        while len(buf) >= 4:
-            if struct.unpack_from(">I", buf, 0)[0] == PACKET_IDENTIFIER:
-                break
-            del buf[0]
+        idx = buf.find(_IDENTIFIER_BYTES)
+        if idx == -1:
+            # No identifier found; keep only the trailing bytes that could be
+            # the start of one split across the next notification.
+            tail_len = min(len(buf), len(_IDENTIFIER_BYTES) - 1)
+            if len(buf) > tail_len:
+                del buf[: len(buf) - tail_len]
+            return False
+
+        if idx > 0:
+            del buf[:idx]
 
         if len(buf) < HEADER_SIZE:
             return False

@@ -68,6 +68,12 @@ class PowerWatchdogFaultSensor(BinarySensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with an error code for this line.
+
+        L2 also requires a detected second line; zero is a valid error code.
+        """
+        if not self._manager.is_connected:
+            return False
         if self._line == "l2" and not self._manager.data.has_l2:
             return False
         line_data = getattr(self._manager.data, self._line, None)

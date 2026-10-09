@@ -22,6 +22,7 @@ from custom_components.hughes_power_watchdog.const import (
     TAIL_SIZE,
 )
 from custom_components.hughes_power_watchdog.models import PowerWatchdogManager
+from homeassistant.exceptions import HomeAssistantError
 
 
 @pytest.fixture()
@@ -60,6 +61,41 @@ class TestButtonConstruction:
     def test_device_class(self, button: WatchdogResetButton):
         """Button has the restart device class."""
         assert button._attr_device_class == "restart"
+
+
+# ── Availability ─────────────────────────────────────────────────────────────
+
+
+class TestButtonAvailability:
+    """Verify the `available` property reflects connection + generation."""
+
+    def test_unavailable_with_no_client(
+        self, manager: PowerWatchdogManager, button: WatchdogResetButton
+    ):
+        manager.client = None
+        assert button.available is False
+
+    def test_unavailable_when_disconnected(
+        self, manager: PowerWatchdogManager, button: WatchdogResetButton
+    ):
+        manager.client = MagicMock(is_connected=False)
+        assert button.available is False
+
+    def test_available_when_connected(
+        self, manager: PowerWatchdogManager, button: WatchdogResetButton
+    ):
+        manager.client = MagicMock(is_connected=True)
+        assert button.available is True
+
+    def test_unavailable_on_gen1_even_if_connected(self):
+        hass = MagicMock()
+        gen1_manager = PowerWatchdogManager(
+            hass, "AA:BB:CC:DD:EE:FF", "Gen1 Watchdog",
+            ble_name="PMS1234567890123456",
+        )
+        gen1_manager.client = MagicMock(is_connected=True)
+        btn = WatchdogResetButton(gen1_manager)
+        assert btn.available is False
 
 
 # ── CMD_RESET_ENERGY payload validation ──────────────────────────────────────
@@ -122,29 +158,31 @@ class TestAsyncPress:
             response=True,
         )
 
-    def test_no_write_when_disconnected(
+    def test_raises_when_disconnected(
         self, manager: PowerWatchdogManager, button: WatchdogResetButton
     ):
-        """async_press does nothing when the client is disconnected."""
+        """async_press raises HomeAssistantError when the client is disconnected."""
         mock_client = MagicMock()
         mock_client.is_connected = False
         mock_client.write_gatt_char = AsyncMock()
         manager.client = mock_client
 
-        asyncio.run(button.async_press())
+        with pytest.raises(HomeAssistantError):
+            asyncio.run(button.async_press())
 
         mock_client.write_gatt_char.assert_not_called()
 
-    def test_no_write_when_no_client(
+    def test_raises_when_no_client(
         self, manager: PowerWatchdogManager, button: WatchdogResetButton
     ):
-        """async_press does nothing when there is no BLE client."""
+        """async_press raises HomeAssistantError when there is no BLE client."""
         manager.client = None
 
-        asyncio.run(button.async_press())
+        with pytest.raises(HomeAssistantError):
+            asyncio.run(button.async_press())
 
-    def test_no_write_on_gen1_device(self):
-        """async_press silently returns on Gen1 hardware even if connected."""
+    def test_raises_on_gen1_device(self):
+        """async_press raises HomeAssistantError on Gen1 hardware even if connected."""
         hass = MagicMock()
         gen1_manager = PowerWatchdogManager(
             hass, "AA:BB:CC:DD:EE:FF", "Gen1 Watchdog",
@@ -156,6 +194,7 @@ class TestAsyncPress:
         gen1_manager.client = mock_client
 
         btn = WatchdogResetButton(gen1_manager)
-        asyncio.run(btn.async_press())
+        with pytest.raises(HomeAssistantError):
+            asyncio.run(btn.async_press())
 
         mock_client.write_gatt_char.assert_not_called()

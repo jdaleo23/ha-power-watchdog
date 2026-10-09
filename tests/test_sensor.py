@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.helpers import build_30a_packet, build_50a_packet
+from tests.helpers import build_30a_packet, build_50a_packet, build_gen1_chunks
 from custom_components.hughes_power_watchdog.models import (
     LineData,
     PowerWatchdogManager,
@@ -27,9 +27,11 @@ from custom_components.hughes_power_watchdog.sensor import (
 
 @pytest.fixture()
 def manager() -> PowerWatchdogManager:
-    """Fresh manager with no data yet."""
+    """Fresh manager with no data yet, with an active (connected) BLE client."""
     hass = MagicMock()
-    return PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "Test Watchdog")
+    mgr = PowerWatchdogManager(hass, "AA:BB:CC:DD:EE:FF", "Test Watchdog")
+    mgr.client = MagicMock(is_connected=True)
+    return mgr
 
 
 @pytest.fixture()
@@ -113,6 +115,39 @@ class TestLineSensorAvailability:
         """L1 sensor is available on a 50A model."""
         sensor = _make_line_sensor(manager_50a, line="l1", field="voltage")
         assert sensor.available is True
+
+
+class TestLineSensorConnectionAvailability:
+    """Sensors must go unavailable when the BLE connection drops, even if
+    they previously received valid data."""
+
+    def test_l1_unavailable_when_disconnected(
+        self, manager_30a: PowerWatchdogManager
+    ):
+        """L1 sensor with prior data goes unavailable once disconnected."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="voltage")
+        assert sensor.available is True
+
+        manager_30a.client.is_connected = False
+        assert sensor.available is False
+
+    def test_l1_unavailable_with_no_client(self, manager_30a: PowerWatchdogManager):
+        """L1 sensor with prior data goes unavailable if the client is gone."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="voltage")
+        manager_30a.client = None
+        assert sensor.available is False
+
+    def test_l1_available_again_after_reconnect(
+        self, manager_30a: PowerWatchdogManager
+    ):
+        """Sensor becomes available again once reconnected, data intact."""
+        sensor = _make_line_sensor(manager_30a, line="l1", field="voltage")
+        manager_30a.client.is_connected = False
+        assert sensor.available is False
+
+        manager_30a.client.is_connected = True
+        assert sensor.available is True
+        assert sensor.native_value == 121.5
 
 
 class TestLineSensorValue:
@@ -212,6 +247,28 @@ class TestTotalSensorAvailability:
         """Total sensor is available after a 50A update."""
         sensor = _make_total_sensor(manager_50a, field="power")
         assert sensor.available is True
+
+    def test_unavailable_when_disconnected(self, manager_30a: PowerWatchdogManager):
+        """Total sensor goes unavailable when the BLE connection drops."""
+        sensor = _make_total_sensor(manager_30a, field="power")
+        assert sensor.available is True
+
+        manager_30a.client.is_connected = False
+        assert sensor.available is False
+
+    def test_unavailable_while_dual_line_has_only_l1(
+        self, manager: PowerWatchdogManager
+    ):
+        """A known dual-line device that has only reported L1 so far must not
+        publish an L1-only partial sum."""
+        manager.data.has_l2 = True
+        manager.data.l1 = LineData(power=200.0, energy=500.0)
+        sensor = _make_total_sensor(manager, field="energy")
+        assert sensor.available is False
+
+        manager.data.l2 = LineData(power=150.0, energy=100.0)
+        assert sensor.available is True
+        assert sensor.native_value == 600.0
 
 
 class TestTotalSensorValue:
@@ -315,3 +372,95 @@ class TestEndToEnd:
         _make_line_sensor(manager, line="l1", field="current")
         _make_total_sensor(manager, field="power")
         assert len(manager.sensors) == 3
+
+
+# ── Reconnect scenarios ──────────────────────────────────────────────────────
+
+
+def _send_gen1(mgr: PowerWatchdogManager, **kwargs) -> None:
+    first, second = build_gen1_chunks(**kwargs)
+    mgr._protocol.notification_handler(None, bytearray(first))
+    mgr._protocol.notification_handler(None, bytearray(second))
+
+
+def _published(sensor: PowerWatchdogTotalSensor) -> float | None:
+    """What HA would record: the value if available, else None."""
+    return sensor.native_value if sensor.available else None
+
+
+class TestTotalAcrossReconnect:
+    """Total Energy is TOTAL_INCREASING, so Home Assistant treats any drop of
+    more than 10% as a meter reset and counts the climb back as new usage.
+    A BLE reconnect must never make the published total dip."""
+
+    @pytest.mark.parametrize(
+        ("ble_name", "l1_markers", "l2_markers"),
+        [
+            ("PMD123456789012E3xx", (0, 0, 0), (1, 1, 1)),  # Gen1 v2 50A
+            ("PMD123456789012E2xx", (3, 5, 7), (0, 0, 0)),  # Gen1 v1 50A
+            ("PMD", (3, 5, 7), (0, 0, 0)),  # v1 50A, learned from telemetry
+        ],
+    )
+    def test_gen1_dual_total_never_dips(
+        self, ble_name: str, l1_markers: tuple, l2_markers: tuple
+    ):
+        mgr = PowerWatchdogManager(MagicMock(), "XX", "Test", ble_name=ble_name)
+        mgr.client = MagicMock(is_connected=True)
+        total = _make_total_sensor(mgr, field="energy")
+
+        _send_gen1(mgr, energy=100.0, markers=l1_markers)
+        _send_gen1(mgr, energy=80.0, markers=l2_markers)
+        assert _published(total) == 180.0
+
+        mgr.client.is_connected = False
+        assert _published(total) is None
+
+        mgr.client.is_connected = True
+        mgr._reset_for_new_connection()
+        assert _published(total) is None
+
+        # First frame after reconnect is L1 only: stay unavailable rather
+        # than publish 100.0.
+        _send_gen1(mgr, energy=100.0, markers=l1_markers)
+        assert _published(total) is None
+
+        _send_gen1(mgr, energy=80.01, markers=l2_markers)
+        assert _published(total) == 180.01
+
+        # From here each frame only refreshes its own line and the other keeps
+        # its latest reading, so the total must stay available on every frame
+        # rather than flicker as L1 and L2 alternate.
+        _send_gen1(mgr, energy=100.02, markers=l1_markers)
+        assert _published(total) == 180.03
+        _send_gen1(mgr, energy=80.02, markers=l2_markers)
+        assert _published(total) == 180.04
+        _send_gen1(mgr, energy=100.03, markers=l1_markers)
+        assert _published(total) == 180.05
+
+    def test_gen2_dual_total_back_after_first_report(
+        self, manager_50a: PowerWatchdogManager
+    ):
+        """Gen2 sends both lines in one report, so the total comes straight
+        back on the first packet after a reconnect."""
+        total = _make_total_sensor(manager_50a, field="energy")
+        assert _published(total) == 600.0
+
+        manager_50a._reset_for_new_connection()
+        assert _published(total) is None
+
+        pkt = build_50a_packet(l1_energy=500.0, l2_energy=100.5)
+        manager_50a._protocol.notification_handler(None, bytearray(pkt))
+        assert _published(total) == 600.5
+
+    def test_gen1_single_line_total_back_after_first_frame(self):
+        """Single-line devices never wait on an L2 that will never come."""
+        mgr = PowerWatchdogManager(
+            MagicMock(), "XX", "Test", ble_name="PMS123456789012E3xx",
+        )
+        mgr.client = MagicMock(is_connected=True)
+        total = _make_total_sensor(mgr, field="energy")
+
+        _send_gen1(mgr, energy=100.0)
+        mgr._reset_for_new_connection()
+        _send_gen1(mgr, energy=100.0)
+        assert _published(total) == 100.0
