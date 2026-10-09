@@ -7,9 +7,12 @@ from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
-from .const import DOMAIN
+from .const import CONF_BLE_NAME, DOMAIN
 
-TO_REDACT = {CONF_ADDRESS}
+# The raw BLE advertisement name embeds the same MAC address as CONF_ADDRESS,
+# just without separators (e.g. "WD_V6_aabbccddeeff" for "AA:BB:CC:DD:EE:FF"),
+# so it needs to be redacted too rather than just the address field.
+TO_REDACT = {CONF_ADDRESS, CONF_BLE_NAME}
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry

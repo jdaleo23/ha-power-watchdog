@@ -70,16 +70,24 @@ class TestDiagnosticsRedaction:
     def test_raw_address_not_present_anywhere(
         self, hass: MagicMock, entry: MagicMock
     ):
-        """The literal MAC address string must not appear anywhere in the dump."""
+        """Neither representation of the MAC address may appear in the dump —
+        not the colon-separated form, and not the raw hex embedded in the
+        BLE advertisement name (e.g. "aabbccddeeff" for "AA:BB:CC:DD:EE:FF")."""
         result = asyncio.run(async_get_config_entry_diagnostics(hass, entry))
-        assert "AA:BB:CC:DD:EE:FF" not in repr(result)
+        dump = repr(result)
+        assert "AA:BB:CC:DD:EE:FF" not in dump
+        assert "aabbccddeeff" not in dump
+
+    def test_ble_name_redacted(self, hass: MagicMock, entry: MagicMock):
+        result = asyncio.run(async_get_config_entry_diagnostics(hass, entry))
+        assert result["manager"]["ble_name"] == "**REDACTED**"
+        assert result["entry"]["data"]["ble_name"] == "**REDACTED**"
 
     def test_non_sensitive_fields_untouched(
         self, hass: MagicMock, entry: MagicMock
     ):
-        """Redaction only targets the address — everything else survives."""
+        """Redaction only targets address-bearing fields — everything else survives."""
         result = asyncio.run(async_get_config_entry_diagnostics(hass, entry))
-        assert result["manager"]["ble_name"] == "WD_V6_aabbccddeeff"
         assert result["manager"]["generation"] == 2
         assert result["entry"]["title"] == "Test Watchdog"
 

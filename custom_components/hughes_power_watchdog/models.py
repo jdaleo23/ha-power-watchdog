@@ -129,12 +129,17 @@ class PowerWatchdogManager:
 
                 _LOGGER.debug("Connected. Subscribing to notifications…")
                 self._protocol.reset_state()
+                # Drop any telemetry cached from a previous connection so
+                # sensors stay unavailable until fresh data confirms them,
+                # instead of briefly showing stale readings as live.
+                self.data = WatchdogData()
                 await self.client.start_notify(
                     self._protocol.notify_uuid,
                     self._protocol.notification_handler,
                 )
 
                 await self._protocol.after_subscribe(self.client)
+                self.notify_sensors()
 
                 while self.client and self.client.is_connected:
                     await asyncio.sleep(5)
@@ -158,3 +163,4 @@ class PowerWatchdogManager:
 
     def _on_disconnected(self, _client) -> None:  # noqa: ANN001
         _LOGGER.debug("Disconnected from Power Watchdog")
+        self.notify_sensors()
