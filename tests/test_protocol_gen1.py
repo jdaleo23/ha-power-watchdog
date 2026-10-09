@@ -209,6 +209,58 @@ class TestDualLineV2V3:
 # ── Dual-line detection: v1 ─────────────────────────────────────────────────
 
 
+class TestDualLineV1ReconnectResilience:
+    """The v1 dual-line pre-seed must survive a manager.data reset, since
+    PowerWatchdogManager replaces `data` with a blank object on every
+    (re)connect — if reset_state() doesn't re-apply it, the first L2 frame
+    after a reconnect gets silently misfiled as L1."""
+
+    def test_has_l2_restored_after_data_reset(
+        self, gen1_v1_dual: PowerWatchdogManager
+    ):
+        from custom_components.hughes_power_watchdog.models import WatchdogData
+
+        assert gen1_v1_dual.data.has_l2 is True
+
+        gen1_v1_dual.data = WatchdogData()
+        assert gen1_v1_dual.data.has_l2 is False
+
+        gen1_v1_dual._protocol.reset_state()
+        assert gen1_v1_dual.data.has_l2 is True
+
+    def test_l2_frame_correctly_assigned_after_reset(
+        self, gen1_v1_dual: PowerWatchdogManager
+    ):
+        """An L2 frame ((0,0,0) markers) arriving right after a reconnect
+        must still be assigned to L2, not L1."""
+        from custom_components.hughes_power_watchdog.models import WatchdogData
+
+        gen1_v1_dual.data = WatchdogData()
+        gen1_v1_dual._protocol.reset_state()
+
+        first, second = build_gen1_chunks(voltage=120.0, markers=(0, 0, 0))
+        _send_chunks(gen1_v1_dual, first, second)
+
+        assert gen1_v1_dual.data.l2.voltage == 120.0
+        assert gen1_v1_dual.data.l1.voltage is None
+
+    def test_v1_single_line_unaffected_by_reset(self):
+        """A v1 single-line device must not gain a spurious has_l2 after
+        reset_state() — the re-seed only applies to pre-detected dual-line."""
+        from custom_components.hughes_power_watchdog.models import WatchdogData
+
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(
+            hass, "XX", "Test",
+            ble_name="PMS123456789012E2xx",
+        )
+        assert mgr.data.has_l2 is False
+
+        mgr.data = WatchdogData()
+        mgr._protocol.reset_state()
+        assert mgr.data.has_l2 is False
+
+
 class TestDualLineV1:
     """v1 devices use non-zero markers to confirm dual-line, (0,0,0) for L2."""
 

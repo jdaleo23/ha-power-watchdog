@@ -128,11 +128,13 @@ class PowerWatchdogManager:
                 )
 
                 _LOGGER.debug("Connected. Subscribing to notifications…")
-                self._protocol.reset_state()
                 # Drop any telemetry cached from a previous connection so
                 # sensors stay unavailable until fresh data confirms them,
-                # instead of briefly showing stale readings as live.
+                # instead of briefly showing stale readings as live. This
+                # must happen before reset_state(), since some protocols
+                # re-seed fields on `data` there (e.g. Gen1 v1 dual-line).
                 self.data = WatchdogData()
+                self._protocol.reset_state()
                 await self.client.start_notify(
                     self._protocol.notify_uuid,
                     self._protocol.notification_handler,
