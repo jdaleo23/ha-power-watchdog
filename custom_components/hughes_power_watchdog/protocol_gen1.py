@@ -52,7 +52,6 @@ class Gen1Protocol:
         self._manager = manager
         self._first_chunk: bytes | None = None
         self._is_v2v3 = False
-        self._is_v1_dual = False
 
         self._init_from_name(ble_name)
 
@@ -80,20 +79,12 @@ class Gen1Protocol:
             )
 
         if hw_ver == 1 and ble_name.startswith(GEN1_DUAL_PREFIX):
-            self._is_v1_dual = True
             self._manager.data.has_l2 = True
             _LOGGER.debug("Gen1 v1 dual-line detected from BLE name")
 
     def reset_state(self) -> None:
-        """Clear protocol state for a new connection.
-
-        Also re-applies the v1 dual-line pre-seed, since the manager
-        replaces ``data`` with a blank object on every (re)connect and
-        that pre-seed otherwise only ever ran once, in ``__init__``.
-        """
+        """Clear protocol state for a new connection."""
         self._first_chunk = None
-        if self._is_v1_dual:
-            self._manager.data.has_l2 = True
 
     @callback
     def notification_handler(self, _sender, data: bytearray) -> None:  # noqa: ANN001

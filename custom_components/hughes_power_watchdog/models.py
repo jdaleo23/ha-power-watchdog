@@ -106,6 +106,19 @@ class PowerWatchdogManager:
 
     # ── Connection lifecycle ────────────────────────────────────────────────
 
+    def _reset_for_new_connection(self) -> None:
+        """Clear per-connection state before subscribing.
+
+        Readings cached from a previous connection are dropped so sensors
+        stay unavailable until fresh telemetry arrives, instead of briefly
+        showing stale values as live. ``has_l2`` is kept: it's a fixed
+        property of the hardware, and Gen1 learns it from the telemetry
+        itself, so losing it would misfile v1 L2 frames as L1 and let the
+        totals briefly drop to L1 only after every reconnect.
+        """
+        self.data = WatchdogData(has_l2=self.data.has_l2)
+        self._protocol.reset_state()
+
     async def connect_loop(self) -> None:
         """Maintain a persistent BLE connection with automatic retry."""
         while True:
@@ -128,13 +141,7 @@ class PowerWatchdogManager:
                 )
 
                 _LOGGER.debug("Connected. Subscribing to notifications…")
-                # Drop any telemetry cached from a previous connection so
-                # sensors stay unavailable until fresh data confirms them,
-                # instead of briefly showing stale readings as live. This
-                # must happen before reset_state(), since some protocols
-                # re-seed fields on `data` there (e.g. Gen1 v1 dual-line).
-                self.data = WatchdogData()
-                self._protocol.reset_state()
+                self._reset_for_new_connection()
                 await self.client.start_notify(
                     self._protocol.notify_uuid,
                     self._protocol.notification_handler,

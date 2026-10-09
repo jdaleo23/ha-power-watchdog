@@ -301,11 +301,17 @@ class PowerWatchdogTotalSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
-        return (
-            self._manager.is_connected
-            and self._manager.data.l1 is not None
-            and getattr(self._manager.data.l1, self._field) is not None
-        )
+        if not self._manager.is_connected:
+            return False
+        data = self._manager.data
+        if data.l1 is None or getattr(data.l1, self._field) is None:
+            return False
+        # On a dual-line device, wait until both lines have reported rather
+        # than publish an L1-only partial sum: Total Energy is
+        # TOTAL_INCREASING, so a dip that big reads as a meter reset to HA.
+        if data.has_l2 and getattr(data.l2, self._field) is None:
+            return False
+        return True
 
     @property
     def native_value(self) -> float | None:
