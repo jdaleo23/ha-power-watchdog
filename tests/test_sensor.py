@@ -427,6 +427,16 @@ class TestTotalAcrossReconnect:
         _send_gen1(mgr, energy=80.01, markers=l2_markers)
         assert _published(total) == 180.01
 
+        # From here each frame only refreshes its own line and the other keeps
+        # its latest reading, so the total must stay available on every frame
+        # rather than flicker as L1 and L2 alternate.
+        _send_gen1(mgr, energy=100.02, markers=l1_markers)
+        assert _published(total) == 180.03
+        _send_gen1(mgr, energy=80.02, markers=l2_markers)
+        assert _published(total) == 180.04
+        _send_gen1(mgr, energy=100.03, markers=l1_markers)
+        assert _published(total) == 180.05
+
     def test_gen2_dual_total_back_after_first_report(
         self, manager_50a: PowerWatchdogManager
     ):
