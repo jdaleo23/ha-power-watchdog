@@ -1,14 +1,6 @@
 {
   "domain": "hughes_power_watchdog",
   "name": "Hughes Power Watchdog - Smart Surge Protector",
-  "codeowners": ["@jdaleo23"],
-  "config_flow": true,
-  "dependencies": ["bluetooth"],
-  "documentation": "https://github.com/jdaleo23/ha-power-watchdog",
-  "iot_class": "local_push",
-  "issue_tracker": "https://github.com/jdaleo23/ha-power-watchdog/issues",
-  "version": "0.0.0",
-  "requirements": ["bleak-retry-connector>=2.0.0"],
   "bluetooth": [
     {
       "service_uuid": "0000ff01-0000-1000-8000-00805f9b34fb"
@@ -25,5 +17,13 @@
     {
       "local_name": "PMD*"
     }
-  ]
+  ],
+  "codeowners": ["@jdaleo23"],
+  "config_flow": true,
+  "dependencies": ["bluetooth"],
+  "documentation": "https://github.com/jdaleo23/ha-power-watchdog",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/jdaleo23/ha-power-watchdog/issues",
+  "requirements": ["bleak-retry-connector>=2.0.0"],
+  "version": "0.0.0"
 }
