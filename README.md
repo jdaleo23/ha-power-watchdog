@@ -1,5 +1,5 @@
 [![Release](https://img.shields.io/github/v/release/jdaleo23/ha-power-watchdog?style=for-the-badge)](https://github.com/jdaleo23/ha-power-watchdog/releases)
-[![HACS Badge](https://img.shields.io/badge/HACS-default-blue.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![HACS Badge](https://img.shields.io/badge/HACS-custom-blue.svg?style=for-the-badge)](https://github.com/hacs/integration)
 ![Compatibility](https://img.shields.io/badge/compatibility-30A%20%26%2050A-blue?style=for-the-badge)
 ![Downloads](https://img.shields.io/github/downloads/jdaleo23/ha-power-watchdog/total?style=for-the-badge)
 ![Latest Downloads](https://img.shields.io/github/downloads/jdaleo23/ha-power-watchdog/latest/total?style=for-the-badge)
