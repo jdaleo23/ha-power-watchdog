@@ -183,6 +183,12 @@ class PowerWatchdogLineSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with a non-None reading for this field.
+
+        L2 also requires a detected second line.
+        """
+        if not self._manager.is_connected:
+            return False
         if self._line == "l2" and not self._manager.data.has_l2:
             return False
         line_data = getattr(self._manager.data, self._line, None)
@@ -219,6 +225,12 @@ class PowerWatchdogErrorCodeSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with an error code for this line.
+
+        L2 also requires a detected second line; zero is a valid error code.
+        """
+        if not self._manager.is_connected:
+            return False
         if self._line == "l2" and not self._manager.data.has_l2:
             return False
         line_data = getattr(self._manager.data, self._line, None)
@@ -255,6 +267,12 @@ class PowerWatchdogErrorDescriptionSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
+        """Return whether connected with an error code for this line.
+
+        L2 also requires a detected second line; zero is a valid error code.
+        """
+        if not self._manager.is_connected:
+            return False
         if self._line == "l2" and not self._manager.data.has_l2:
             return False
         line_data = getattr(self._manager.data, self._line, None)
@@ -295,10 +313,22 @@ class PowerWatchdogTotalSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
-        return (
-            self._manager.data.l1 is not None
-            and getattr(self._manager.data.l1, self._field) is not None
-        )
+        """Return whether connected with readings for every required line.
+
+        Require this field on L1 and, when a second line is detected, L2
+        so a partial total is not published after reconnecting.
+        """
+        if not self._manager.is_connected:
+            return False
+        data = self._manager.data
+        if data.l1 is None or getattr(data.l1, self._field) is None:
+            return False
+        # On a dual-line device, wait until both lines have reported rather
+        # than publish an L1-only partial sum: Total Energy is
+        # TOTAL_INCREASING, so a dip that big reads as a meter reset to HA.
+        if data.has_l2 and getattr(data.l2, self._field) is None:
+            return False
+        return True
 
     @property
     def native_value(self) -> float | None:

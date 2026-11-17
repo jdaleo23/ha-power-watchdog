@@ -209,6 +209,80 @@ class TestDualLineV2V3:
 # ── Dual-line detection: v1 ─────────────────────────────────────────────────
 
 
+class TestDualLineReconnectResilience:
+    """The manager drops cached readings on every (re)connect, but the
+    learned dual-line flag must survive it — otherwise the first v1 L2
+    frame after a reconnect gets silently misfiled as L1."""
+
+    def test_v1_name_preseed_survives_reconnect(
+        self, gen1_v1_dual: PowerWatchdogManager
+    ):
+        assert gen1_v1_dual.data.has_l2 is True
+        gen1_v1_dual._reset_for_new_connection()
+        assert gen1_v1_dual.data.has_l2 is True
+
+    def test_l2_frame_correctly_assigned_after_reconnect(
+        self, gen1_v1_dual: PowerWatchdogManager
+    ):
+        """An L2 frame ((0,0,0) markers) arriving right after a reconnect
+        must still be assigned to L2, not L1."""
+        gen1_v1_dual._reset_for_new_connection()
+
+        first, second = build_gen1_chunks(voltage=120.0, markers=(0, 0, 0))
+        _send_chunks(gen1_v1_dual, first, second)
+
+        assert gen1_v1_dual.data.l2.voltage == 120.0
+        assert gen1_v1_dual.data.l1.voltage is None
+
+    def test_dual_learned_from_telemetry_survives_reconnect(self):
+        """A v1 dual-line device whose name can't be decoded learns it's
+        dual-line from its first non-zero-marker L1 frame. That has to
+        carry over a reconnect too, not just the name-based pre-seed."""
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(hass, "XX", "Test", ble_name="PMD")
+        assert mgr.data.has_l2 is False
+
+        first, second = build_gen1_chunks(voltage=121.0, markers=(3, 5, 7))
+        _send_chunks(mgr, first, second)
+        assert mgr.data.has_l2 is True
+
+        mgr._reset_for_new_connection()
+
+        first, second = build_gen1_chunks(voltage=119.0, markers=(0, 0, 0))
+        _send_chunks(mgr, first, second)
+        assert mgr.data.l2.voltage == 119.0
+        assert mgr.data.l1.voltage is None
+
+    def test_v1_single_line_unaffected_by_reconnect(self):
+        """A v1 single-line device must not gain a spurious has_l2."""
+        hass = MagicMock()
+        mgr = PowerWatchdogManager(
+            hass, "XX", "Test",
+            ble_name="PMS123456789012E2xx",
+        )
+        first, second = build_gen1_chunks(voltage=120.0, markers=(0, 0, 0))
+        _send_chunks(mgr, first, second)
+
+        mgr._reset_for_new_connection()
+        assert mgr.data.has_l2 is False
+
+        _send_chunks(mgr, first, second)
+        assert mgr.data.l1.voltage == 120.0
+
+    def test_partial_chunk_dropped_on_reconnect(
+        self, gen1_v2_single: PowerWatchdogManager
+    ):
+        """A first chunk left over from the old connection must not be
+        glued onto a second chunk from the new one."""
+        first, second = build_gen1_chunks(voltage=120.0)
+        gen1_v2_single._protocol.notification_handler(None, bytearray(first))
+
+        gen1_v2_single._reset_for_new_connection()
+
+        gen1_v2_single._protocol.notification_handler(None, bytearray(second))
+        assert gen1_v2_single.data.l1.voltage is None
+
+
 class TestDualLineV1:
     """v1 devices use non-zero markers to confirm dual-line, (0,0,0) for L2."""
 

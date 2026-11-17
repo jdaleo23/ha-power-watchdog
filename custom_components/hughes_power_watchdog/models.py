@@ -81,6 +81,11 @@ class PowerWatchdogManager:
         """Device generation (1 or 2)."""
         return self._protocol.generation
 
+    @property
+    def is_connected(self) -> bool:
+        """Return True if there is an active BLE connection."""
+        return bool(self.client and self.client.is_connected)
+
     def _init_protocol(self):  # noqa: ANN202
         """Create the appropriate protocol handler based on BLE name."""
         if self.ble_name.startswith(GEN1_PREFIX):
@@ -101,8 +106,28 @@ class PowerWatchdogManager:
 
     # ── Connection lifecycle ────────────────────────────────────────────────
 
+    def _reset_for_new_connection(self) -> None:
+        """Clear per-connection state before subscribing.
+
+        Readings cached from a previous connection are dropped so sensors
+        stay unavailable until fresh telemetry arrives, instead of briefly
+        showing stale values as live. ``has_l2`` is kept: it's a fixed
+        property of the hardware, and Gen1 learns it from the telemetry
+        itself, so losing it would misfile v1 L2 frames as L1 and let the
+        totals briefly drop to L1 only after every reconnect.
+        """
+        self.data = WatchdogData(has_l2=self.data.has_l2)
+        self._protocol.reset_state()
+
     async def connect_loop(self) -> None:
-        """Maintain a persistent BLE connection with automatic retry."""
+        """Maintain a persistent BLE connection with automatic retry.
+
+        Clear cached readings on each connection and notify sensors after
+        subscribing. Retry BLE errors and timeouts after 10 seconds, and
+        other exceptions after 30 seconds. CancelledError propagates;
+        cancellation outside an error retry delay also attempts to disconnect,
+        suppressing errors from disconnect cleanup.
+        """
         while True:
             try:
                 _LOGGER.debug("Connecting to Power Watchdog %s", self.address)
@@ -123,13 +148,14 @@ class PowerWatchdogManager:
                 )
 
                 _LOGGER.debug("Connected. Subscribing to notifications…")
-                self._protocol.reset_state()
+                self._reset_for_new_connection()
                 await self.client.start_notify(
                     self._protocol.notify_uuid,
                     self._protocol.notification_handler,
                 )
 
                 await self._protocol.after_subscribe(self.client)
+                self.notify_sensors()
 
                 while self.client and self.client.is_connected:
                     await asyncio.sleep(5)
@@ -147,9 +173,11 @@ class PowerWatchdogManager:
             except (BleakError, asyncio.TimeoutError) as ex:
                 _LOGGER.warning("Connection failed: %s. Retrying in 10 s…", ex)
                 await asyncio.sleep(10)
-            except Exception as ex:  # noqa: BLE001
-                _LOGGER.error("Unexpected error: %s", ex)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error in Power Watchdog connection loop")
                 await asyncio.sleep(30)
 
     def _on_disconnected(self, _client) -> None:  # noqa: ANN001
+        """Refresh registered entities on BLE disconnect to update availability."""
         _LOGGER.debug("Disconnected from Power Watchdog")
+        self.notify_sensors()
