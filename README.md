@@ -156,6 +156,6 @@ Here is a sample layout for your 30A connection showing the 80% safety limits an
 * **Questions or Requests:** Let's talk about it in the [Discussions](https://github.com/jdaleo23/ha-power-watchdog/discussions) tab!
 * **Like it?** A ⭐ on the repo helps other people find it.
 
-If you find this integration useful, consider supporting the original author:
+If you find this integration useful, consider supporting the project:
 * [Donate with PayPal](https://paypal.me/jordandaleo)
 * [Buy Me A Coffee](https://ko-fi.com/jdaleo23)
