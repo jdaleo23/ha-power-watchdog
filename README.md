@@ -149,6 +149,7 @@ The integration uses your device's model number to automatically enable the sens
 * **Found a bug?** Please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) and include your logs.
 * **Have a question?** Join the [Discussions](https://github.com/jdaleo23/ha-power-watchdog/discussions) to ask questions or share your dashboard setup.
 * **Feature Requests:** Have an idea for a new sensor or feature? Let's talk about it in the Discussions tab!
+* **Like it?** A star on the repo helps other people find it.
 
 ## Dashboard Setup
 Here is a sample layout for your 30A connection showing the 80% safety limits and available sensors:
