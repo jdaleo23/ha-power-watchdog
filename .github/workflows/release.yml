@@ -35,3 +35,14 @@ jobs:
           asset_name: hughes_power_watchdog.zip
           tag: ${{ github.ref }}
           overwrite: true
+
+      - name: Add feedback footer to the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          body="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body)"
+          if ! grep -q "helps other people find it" <<< "$body"; then
+            footer="$(printf '\n\n## Feedback\n\nFound a bug or have an idea? [Open an issue](https://github.com/%s/issues) or start a [Discussion](https://github.com/%s/discussions).\n\nIf you find the integration useful, a ⭐ on the [repo](https://github.com/%s) helps other people find it.\n' "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY")"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes "${body}${footer}"
+          fi
