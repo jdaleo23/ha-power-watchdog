@@ -145,19 +145,17 @@ The integration uses your device's model number to automatically enable the sens
 * **Connection Stability:** Bluetooth range can be limited; if you experience dropouts, consider using an [ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy.html) closer to your RV.
 * **Stale BlueZ Connections:** If the device was previously connected and the connection was not cleanly closed, your Bluetooth stack may hold a stale connection handle. Power-cycling the Power Watchdog or restarting Home Assistant will resolve this.
 
-## Support & Community
-* **Found a bug?** Please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) and include your logs.
-* **Have a question?** Join the [Discussions](https://github.com/jdaleo23/ha-power-watchdog/discussions) to ask questions or share your dashboard setup.
-* **Feature Requests:** Have an idea for a new sensor or feature? Let's talk about it in the Discussions tab!
-* **Like it?** A star on the repo helps other people find it.
-
 ## Dashboard Setup
 Here is a sample layout for your 30A connection showing the 80% safety limits and available sensors:
 
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/safety_gauges.png" width="300" alt="Safety gauge dashboard example">
 <img src="https://raw.githubusercontent.com/jdaleo23/ha-power-watchdog/main/images/sensors.png" width="300" alt="Sensor card dashboard example">
 
-## Support the Project
+## Support & Community
+* **Found a bug?** Please [open an issue](https://github.com/jdaleo23/ha-power-watchdog/issues) and include your logs.
+* **Feature Requests:** Have an idea for a new sensor or feature? Let's talk about it in the [Discussions](https://github.com/jdaleo23/ha-power-watchdog/discussions) tab!
+* **Like it?** A ⭐ on the repo helps other people find it.
+
 If you find this integration useful, consider supporting the original author:
 * [Donate with PayPal](https://paypal.me/jordandaleo)
 * [Buy Me A Coffee](https://ko-fi.com/jdaleo23)
